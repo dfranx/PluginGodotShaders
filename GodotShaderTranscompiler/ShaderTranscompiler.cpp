@@ -27,6 +27,9 @@ namespace gd
 		ShaderCompilerGLES3::IdentifierActions* actions = nullptr;
 
 		bool usesColor = false;
+		out.SCREEN_TEXTURE = false;
+		out.SCREEN_UV = false;
+		out.TIME = false;
 		out.LightMode = Shader::CanvasItem::LIGHT_MODE_UNSHADED;
 		out.BlendMode = Shader::CanvasItem::BLEND_MODE_MIX;
 

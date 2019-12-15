@@ -1,10 +1,40 @@
 #include "GodotShaders.h"
+#include "Plugin/CanvasMaterial.h"
+
+#include <string.h>
+#include "imgui/imgui.h"
 
 namespace gd
 {
+	void GodotShaders::m_addCanvasMaterial()
+	{
+		// initialize the data
+		pipe::CanvasMaterial* data = new pipe::CanvasMaterial();
+
+		// generate name
+		std::string name = "Material";
+		for (size_t i = m_items.size(); /*BREAK WHEN WE FIND A NUMBER*/; i++) {
+			name = "Material" + std::to_string(i);
+			if (!ExistsPipelineItem(PipelineManager, name.c_str()))
+				break;
+		}
+
+		// add the item
+		AddCustomPipelineItem(PipelineManager, nullptr, name.c_str(), ITEM_NAME_CANVAS_MATERIAL, data, this);
+
+		// add it to our local list
+		strcpy(data->Name, name.c_str());
+		data->Items.clear();
+		data->Owner = this;
+		m_items.push_back(data);
+	}
+
 	bool GodotShaders::Init() { return true; }
 	void GodotShaders::OnEvent(void* e) { }
-	void GodotShaders::Update(float delta) { }
+	void GodotShaders::Update(float delta)
+	{ 
+		// TODO: check every 500ms if ShaderPass is used -> push an error message if yes
+	}
 	void GodotShaders::Destroy() { }
 
 	void GodotShaders::CopyFilesOnSave(const char* dir) { } // TODO: copy all the .shader files
@@ -13,8 +43,27 @@ namespace gd
 	bool GodotShaders::HasMenuItems(const char* name) { return false; }
 	void GodotShaders::ShowMenuItems(const char* name) { }
 
-	bool GodotShaders::HasContextItems(const char* name) { return false; }
-	void GodotShaders::ShowContextItems(const char* name, void* owner) { }
+	bool GodotShaders::HasContextItems(const char* name)
+	{ 
+		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0;
+	}
+	void GodotShaders::ShowContextItems(const char* name, void* owner)
+	{
+		// create pipeline item
+		if (strcmp(name, "pipeline") == 0) {
+			if (ImGui::Selectable("Create " ITEM_NAME_CANVAS_MATERIAL))
+				m_addCanvasMaterial();
+		}
+		// plugin item add
+		else if (strcmp(name, "pluginitem_add") == 0) {
+			const char* ownerType = (const char*)owner;
+			if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+				if (ImGui::Selectable("Create " ITEM_NAME_SPRITE2D)) {
+
+				}
+			}
+		}
+	}
 
 	// system variables (not needed for this plugin)
 	bool GodotShaders::HasSystemVariables(ed::plugin::VariableType varType) { return false; }
@@ -51,18 +100,93 @@ namespace gd
 	void GodotShaders::ShowObjectContext(const char* type, void* data) { }
 
 	// pipeline item stuff
-	bool GodotShaders::HasPipelineItemProperties(const char* type) { return false; }
-	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data) { }
+	bool GodotShaders::HasPipelineItemProperties(const char* type) 
+	{ 
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+	}
+	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
+	{ 
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			pipe::CanvasMaterial* item = (pipe::CanvasMaterial*)data;
+			item->ShowProperties();
+		}
+	}
 	bool GodotShaders::IsPipelineItemPickable(const char* type) { return false; }
 	bool GodotShaders::HasPipelineItemShaders(const char* type) { return false; }
 	void GodotShaders::OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data) { }
-	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType) { return false; }
+	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType)
+	{ 
+		// only allow GItems
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 && itemType == ed::plugin::PipelineItemType::PluginItem;
+	}
 	int GodotShaders::GetPipelineItemInputLayoutSize(const char* itemName) { return 0; }
 	void GodotShaders::GetPipelineItemInputLayoutItem(const char* itemName, int index, ed::plugin::InputLayoutItem& out) { }
-	void GodotShaders::RemovePipelineItem(const char* itemName, const char* type, void* data) { }
-	void GodotShaders::RenamePipelineItem(const char* oldName, const char* newName) { }
+	void GodotShaders::RemovePipelineItem(const char* itemName, const char* type, void* data)
+	{
+		// delete allocated data
+		for (size_t i = 0; i < m_items.size(); i++) {
+			// check for main items
+			if (strcmp(m_items[i]->Name, itemName) == 0) {
+				delete m_items[i];
+				m_items.erase(m_items.begin() + i);
+
+				printf("[GSHADER] Deleting %s\n", itemName);
+
+				break;
+			} else {
+				// check for children items
+				bool found = false;
+				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
+					if (strcmp(m_items[i]->Items[j]->Name, itemName) == 0) {
+						delete m_items[i]->Items[j];
+						m_items[i]->Items.erase(m_items[i]->Items.begin() + j);
+						found = true;
+
+						printf("[GSHADER] Deleting %s\n", itemName);
+
+						break;
+					}
+				}
+				if (found)
+					break;
+			}
+		}
+	}
+	void GodotShaders::RenamePipelineItem(const char* oldName, const char* newName)
+	{
+		// update our local copy of pipeline items
+		for (size_t i = 0; i < m_items.size(); i++) {
+			// check for main items
+			if (strcmp(m_items[i]->Name, oldName) == 0) {
+				strcpy(m_items[i]->Name, newName);
+
+				printf("[GSHADER] Renaming %s to %s\n", oldName, newName);
+
+				break;
+			}
+			else {
+				// check for children items
+				bool found = false;
+				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
+					if (strcmp(m_items[i]->Items[j]->Name, oldName) == 0) {
+						strcpy(m_items[i]->Items[j]->Name, newName);
+						found = true;
+
+						printf("[GSHADER] Renaming %s to %s\n", oldName, newName);
+
+						break;
+					}
+				}
+				if (found)
+					break;
+			}
+		}
+	}
 	bool GodotShaders::AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data) { return false; }
-	bool GodotShaders::CanPipelineItemHaveChildren(const char* type) { return false; }
+	bool GodotShaders::CanPipelineItemHaveChildren(const char* type)
+	{
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+	}
 	void* GodotShaders::CopyPipelineItemData(const char* type, void* data) { return nullptr; }
 	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) { }
 	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count) { }

@@ -8,6 +8,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./bin)
 set(SOURCES
 	dllmain.cpp
 	GodotShaders.cpp
+	Plugin/CanvasMaterial.cpp
+
+# UI
+	UI/UIHelper.cpp
 
 # shader transcompiler
 	GodotShaderTranscompiler/Godot/shader_types.cpp
@@ -21,6 +25,7 @@ set(SOURCES
 	imgui/imgui_widgets.cpp
 	imgui/imgui.cpp
 	pugixml/src/pugixml.cpp	
+	nativefiledialog/nfd_common.c
 )
 
 # cmake toolchain 
@@ -28,10 +33,29 @@ if(CMAKE_TOOLCHAIN_FILE)
     include(${CMAKE_TOOLCHAIN_FILE})
 endif(CMAKE_TOOLCHAIN_FILE)
 
-# cmake toolchain 
-if(CMAKE_TOOLCHAIN_FILE)
-    include(${CMAKE_TOOLCHAIN_FILE})
-endif(CMAKE_TOOLCHAIN_FILE)
+# nfd
+if(WIN32)
+	set(SOURCES
+		"${SOURCES}"
+		nativefiledialog/nfd_win.cpp
+	)
+elseif(APPLE)
+	set(SOURCES
+		"${SOURCES}"
+		nativefiledialog/nfd_cocoa.m
+	)
+else()
+	set(SOURCES
+		"${SOURCES}"
+		nativefiledialog/nfd_gtk.c
+	)
+	
+	# link gtk on linux
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(GTK REQUIRED gtk+-3.0)
+	link_directories(${GTK_LIBRARY_DIRS})
+	add_definitions(${GTK_CFLAGS})
+endif()
 
 # sdl2
 if(WIN32 OR APPLE OR NOT ${USE_PKG_CHECK_SDL})

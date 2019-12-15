@@ -59,7 +59,6 @@ namespace gd
 
 
 
-
 		out.Fragment = "#version 330\n";
 
 		// inputs

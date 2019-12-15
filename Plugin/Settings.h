@@ -1,0 +1,7 @@
+#pragma once
+
+#define MAX_PATH_LENGTH 512 // TODO: #define MAX_PATH_LENGTH MAX_PATH
+#define PIPELINE_ITEM_NAME_LENGTH 32
+
+#define ITEM_NAME_CANVAS_MATERIAL "GCanvasMaterial"
+#define ITEM_NAME_SPRITE2D "GSprite2D"

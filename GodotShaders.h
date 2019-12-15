@@ -1,5 +1,9 @@
 #pragma once
 #include "PluginAPI/Plugin.h"
+#include "Plugin/PipelineItem.h"
+
+#include <vector>
+#include <string>
 
 namespace gd
 {
@@ -84,5 +88,10 @@ namespace gd
 
 		// misc
 		virtual bool HandleDropFile(const char* filename);
+	
+	private:
+		void m_addCanvasMaterial();
+		
+		std::vector<gd::PipelineItem*> m_items;
 	};
 }

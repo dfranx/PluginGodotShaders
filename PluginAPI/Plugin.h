@@ -49,6 +49,11 @@ namespace ed
 		typedef void (*SetMousePositionFn)(float x, float y);
 		typedef void (*SetKeysWASDFn)(bool w, bool a, bool s, bool d);
 		typedef void (*SetFrameIndexFn)(int findex);
+
+		typedef float (*GetDPIFn)();
+		typedef bool (*FileExistsFn)(void* project, const char* path);
+		typedef void (*ClearMessageGroupFn)(void* messages, const char* group);
+		typedef void (*LogFn)(const char* msg, bool error, const char* file, int line);
 	}
 
 	// CreatePlugin(), DestroyPlugin(ptr), GetPluginAPIVersion(), GetPluginVersion(), GetPluginName()
@@ -178,5 +183,9 @@ namespace ed
 		pluginfn::SetMousePositionFn SetMousePosition;
 		pluginfn::SetKeysWASDFn SetKeysWASD;
 		pluginfn::SetFrameIndexFn SetFrameIndex;
+		pluginfn::GetDPIFn GetDPI;
+		pluginfn::FileExistsFn FileExists;
+		pluginfn::ClearMessageGroupFn ClearMessageGroup;
+		pluginfn::LogFn Log;
 	};
 }

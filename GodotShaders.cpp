@@ -1,5 +1,6 @@
 #include "GodotShaders.h"
 #include "Plugin/CanvasMaterial.h"
+#include "Plugin/Sprite2D.h"
 
 #include <string.h>
 #include "imgui/imgui.h"
@@ -13,7 +14,7 @@ namespace gd
 
 		// generate name
 		std::string name = "Material";
-		for (size_t i = m_items.size(); /*BREAK WHEN WE FIND A NUMBER*/; i++) {
+		for (size_t i = 0; /*BREAK WHEN WE FIND A NUMBER*/; i++) {
 			name = "Material" + std::to_string(i);
 			if (!ExistsPipelineItem(PipelineManager, name.c_str()))
 				break;
@@ -21,6 +22,32 @@ namespace gd
 
 		// add the item
 		AddCustomPipelineItem(PipelineManager, nullptr, name.c_str(), ITEM_NAME_CANVAS_MATERIAL, data, this);
+
+		// add it to our local list
+		strcpy(data->Name, name.c_str());
+		data->Items.clear();
+		data->Owner = this;
+		m_items.push_back(data);
+
+		data->Compile();
+	}
+	void GodotShaders::m_addSprite(pipe::CanvasMaterial* owner)
+	{
+		// initialize the data
+		pipe::Sprite2D* data = new pipe::Sprite2D();
+
+		// generate name
+		std::string name = "Sprite";
+		for (size_t i = 0; /*BREAK WHEN WE FIND A NUMBER*/; i++) {
+			name = "Sprite" + std::to_string(i);
+			if (!ExistsPipelineItem(PipelineManager, name.c_str()))
+				break;
+		}
+
+		// add the item
+		void* ownerData = GetPipelineItem(PipelineManager, owner->Name);
+
+		AddCustomPipelineItem(PipelineManager, ownerData, name.c_str(), ITEM_NAME_SPRITE2D, data, this);
 
 		// add it to our local list
 		strcpy(data->Name, name.c_str());
@@ -47,7 +74,7 @@ namespace gd
 	{ 
 		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0;
 	}
-	void GodotShaders::ShowContextItems(const char* name, void* owner)
+	void GodotShaders::ShowContextItems(const char* name, void* owner, void* extraData)
 	{
 		// create pipeline item
 		if (strcmp(name, "pipeline") == 0) {
@@ -59,7 +86,8 @@ namespace gd
 			const char* ownerType = (const char*)owner;
 			if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 				if (ImGui::Selectable("Create " ITEM_NAME_SPRITE2D)) {
-
+					pipe::CanvasMaterial* ownerData = (pipe::CanvasMaterial*)extraData;
+					m_addSprite(ownerData);
 				}
 			}
 		}
@@ -182,7 +210,16 @@ namespace gd
 			}
 		}
 	}
-	bool GodotShaders::AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data) { return false; }
+	void GodotShaders::AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data)
+	{
+		for (int i = 0; i < m_items.size(); i++)
+			if (strcmp(m_items[i]->Name, name) == 0) {
+				m_items[i]->Items.push_back((PipelineItem*)data);
+				break;
+			}
+
+		printf("[GSHADER] Added %s to %s\n", name, owner);
+	}
 	bool GodotShaders::CanPipelineItemHaveChildren(const char* type)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;

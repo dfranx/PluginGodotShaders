@@ -1,4 +1,5 @@
 #include "CanvasMaterial.h"
+#include "ResourceManager.h"
 #include "../PluginAPI/Plugin.h"
 #include "../UI/UIHelper.h"
 
@@ -7,6 +8,13 @@
 
 #include <string.h>
 #include <string>
+
+#include <GL/glew.h>
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
 
 #define BUTTON_SPACE_LEFT -40 * Owner->GetDPI()
 
@@ -17,10 +25,12 @@ namespace gd
 		CanvasMaterial::CanvasMaterial()
 		{
 			memset(ShaderPath, 0, sizeof(char) * MAX_PATH_LENGTH);
+			m_shader = 0;
 		}
 		CanvasMaterial::~CanvasMaterial()
 		{
-
+			if (m_shader != 0)
+				glDeleteShader(m_shader);
 		}
 
 		void CanvasMaterial::ShowProperties()
@@ -58,8 +68,7 @@ namespace gd
 
 					if (Owner->FileExists(Owner->Project, file.c_str())) {
 						Owner->ClearMessageGroup(Owner->Messages, Name);
-
-						// TODO: recompile shader
+						Compile();
 					}
 					else
 						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist");
@@ -69,6 +78,58 @@ namespace gd
 
 
 			ImGui::Columns(1);
+		}
+
+		void CanvasMaterial::Compile()
+		{
+			const char* vsCode = ResourceManager::Instance().GetDefaultCanvasVertexShader().c_str();
+			const char* psCode = ResourceManager::Instance().GetDefaultCanvasPixelShader().c_str();
+
+			GLint success = 0;
+			char infoLog[512];
+
+			if (m_shader != 0)
+				glDeleteShader(m_shader);
+
+			// create vertex shader
+			unsigned int canvasVS = glCreateShader(GL_VERTEX_SHADER);
+			glShaderSource(canvasVS, 1, &vsCode, nullptr);
+			glCompileShader(canvasVS);
+			glGetShaderiv(canvasVS, GL_COMPILE_STATUS, &success);
+			if (!success) {
+				glGetShaderInfoLog(canvasVS, 512, NULL, infoLog);
+				Owner->Log("Failed to compile a GCanvasMaterial vertex shader", true, nullptr, -1);
+				Owner->Log(infoLog, true, nullptr, -1);
+			}
+
+			// create pixel shader
+			unsigned int canvasPS = glCreateShader(GL_FRAGMENT_SHADER);
+			glShaderSource(canvasPS, 1, &psCode, nullptr);
+			glCompileShader(canvasPS);
+			glGetShaderiv(canvasPS, GL_COMPILE_STATUS, &success);
+			if (!success) {
+				glGetShaderInfoLog(canvasPS, 512, NULL, infoLog);
+				Owner->Log("Failed to compile a GCanvasMaterial pixel shader", true, nullptr, -1);
+				Owner->Log(infoLog, true, nullptr, -1);
+			}
+
+			// create a shader program for gizmo
+			m_shader = glCreateProgram();
+			glAttachShader(m_shader, canvasVS);
+			glAttachShader(m_shader, canvasPS);
+			glLinkProgram(m_shader);
+			glGetProgramiv(m_shader, GL_LINK_STATUS, &success);
+			if (!success) {
+				glGetProgramInfoLog(m_shader, 512, NULL, infoLog);
+				Owner->Log("Failed to create a GCanvasMaterial shader program", true, nullptr, -1);
+				Owner->Log(infoLog, true, nullptr, -1);
+			}
+
+			glDeleteShader(canvasPS);
+			glDeleteShader(canvasVS);
+
+			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
+			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");
 		}
 	}
 }

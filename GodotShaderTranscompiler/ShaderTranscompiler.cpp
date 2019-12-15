@@ -106,10 +106,10 @@ namespace gd
 		// inputs
 		out.Vertex += "layout(location = 0) in vec2 vertex;\n";
 		out.Vertex += "layout(location = 1) in vec4 color_attrib;\n";
-		out.Vertex += "layout(location = 2) in vec4 uv_attrib;\n\n";
+		out.Vertex += "layout(location = 2) in vec2 uv_attrib;\n\n";
 
 		// output
-		out.Vertex += "layout(location = 0) out vec2 uv_interop;\n";
+		out.Vertex += "layout(location = 0) out vec2 uv_interp;\n";
 		out.Vertex += "layout(location = 1) out vec4 color_interp;\n\n";
 
 		// user uniforms

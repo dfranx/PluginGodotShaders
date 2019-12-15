@@ -15,6 +15,10 @@ namespace gd
 			~CanvasMaterial();
 
 			void ShowProperties();
+			void Compile();
+
+		private:
+			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc;
 		};
 	}
 }

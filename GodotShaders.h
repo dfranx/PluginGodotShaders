@@ -1,9 +1,11 @@
 #pragma once
 #include "PluginAPI/Plugin.h"
 #include "Plugin/PipelineItem.h"
+#include "Plugin/CanvasMaterial.h"
 
 #include <vector>
 #include <string>
+
 
 namespace gd
 {
@@ -22,7 +24,7 @@ namespace gd
 		virtual void ShowMenuItems(const char* name);
 
 		virtual bool HasContextItems(const char* name);
-		virtual void ShowContextItems(const char* name, void* owner = nullptr); 
+		virtual void ShowContextItems(const char* name, void* owner = nullptr, void* extraData = nullptr);
 
 		// system variables
 		virtual bool HasSystemVariables(ed::plugin::VariableType varType);
@@ -69,7 +71,7 @@ namespace gd
 		virtual void GetPipelineItemInputLayoutItem(const char* itemName, int index, ed::plugin::InputLayoutItem& out);
 		virtual void RemovePipelineItem(const char* itemName, const char* type, void* data);
 		virtual void RenamePipelineItem(const char* oldName, const char* newName);
-		virtual bool AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data);
+		virtual void AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data);
 		virtual bool CanPipelineItemHaveChildren(const char* type);
 		virtual void* CopyPipelineItemData(const char* type, void* data);
 		virtual void ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data);
@@ -91,6 +93,7 @@ namespace gd
 	
 	private:
 		void m_addCanvasMaterial();
+		void m_addSprite(pipe::CanvasMaterial* owner);
 		
 		std::vector<gd::PipelineItem*> m_items;
 	};

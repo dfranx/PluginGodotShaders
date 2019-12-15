@@ -9,6 +9,8 @@ set(SOURCES
 	dllmain.cpp
 	GodotShaders.cpp
 	Plugin/CanvasMaterial.cpp
+	Plugin/Sprite2D.cpp
+	Plugin/ResourceManager.cpp
 
 # UI
 	UI/UIHelper.cpp

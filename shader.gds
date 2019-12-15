@@ -1,0 +1,15 @@
+shader_type canvas_item;
+
+uniform float blue = 1.0f;
+uniform float green = 0.5f;
+
+float test(float a)
+{
+	return a * 0.5f;
+}
+
+void fragment(){
+  COLOR = texture(SCREEN_TEXTURE, SCREEN_UV);
+  COLOR.b = test(blue);
+  COLOR.r = test(green);
+}

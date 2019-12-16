@@ -1,2 +1,8 @@
 vsproject64/
 copy.bat
+CMakeCache.txt
+CMakeFiles/
+Makefile
+bin/
+cmake_install.cmake
+copy.sh

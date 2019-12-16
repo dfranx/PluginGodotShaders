@@ -9,8 +9,8 @@
 #include <string.h>
 #include <string>
 
-#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <GL/glew.h>
 #if defined(__APPLE__)
@@ -36,13 +36,20 @@ namespace gd
 			if (m_shader != 0)
 				glDeleteShader(m_shader);
 		}
+		void CanvasMaterial::SetViewportSize(float w, float h)
+		{
+			printf("%.2f %.2f\n", w, h);
+			float mat[16];
+			Owner->GetOrthographicMatrix(&mat[0]);
 
+			m_projMat = glm::ortho(0.0f, w, h, 0.0f, 0.1f, 1000.0f);
+		}
 		void CanvasMaterial::Bind()
 		{
 			// bind shaders
 			glUseProgram(m_shader);
 
-			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_TRUE, glm::value_ptr(m_projMat));
 			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
 		}
 		void CanvasMaterial::ShowProperties()
@@ -142,6 +149,8 @@ namespace gd
 
 			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
 			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");
+
+			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
 		}
 	}
 }

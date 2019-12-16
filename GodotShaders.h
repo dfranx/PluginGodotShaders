@@ -100,8 +100,6 @@ namespace gd
 
 		// misc
 		virtual bool HandleDropFile(const char* filename);
-	
-		inline GLuint GetMyTexture() { return m_fboColor; }
 	private:
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
@@ -111,7 +109,7 @@ namespace gd
 
 		glm::vec2 m_rtSize, m_lastSize;
 		glm::vec4 m_clearColor;
-		GLuint m_fbo, m_fboColor, m_fboDepth;
+		GLuint m_fbo;
 
 		PipelineItem* m_popupItem;
 

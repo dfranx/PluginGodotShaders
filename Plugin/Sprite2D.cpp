@@ -19,6 +19,8 @@ namespace gd
 		Sprite2D::Sprite2D()
 		{
 			m_color = glm::vec4(1.0f);
+			m_size = glm::vec2(1.0f);
+			m_pos = glm::vec2(0.0f);
 			m_texID = ResourceManager::Instance().EmptyTexture;
 			m_texName = "";
 			m_vao = 0;
@@ -38,7 +40,7 @@ namespace gd
 		void Sprite2D::ShowProperties()
 		{
 			ImGui::Text("Texture:");
-			ImGui::Image((ImTextureID)((gd::GodotShaders*)Owner)->GetMyTexture(), ImVec2(64, 64));
+			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64));
 		}
 
 		void Sprite2D::SetTexture(const std::string& texObjName)
@@ -61,6 +63,8 @@ namespace gd
 			glBindTexture(GL_TEXTURE_2D, 0);
 
 			// recreate vbo
+			m_size = glm::vec2(w,h);
+			m_buildVBO();
 		}
 		void Sprite2D::SetColor(glm::vec4 clr)
 		{
@@ -69,6 +73,9 @@ namespace gd
 		}
 		void Sprite2D::Draw()
 		{
+			glActiveTexture(GL_TEXTURE0 + 0);
+			glBindTexture(GL_TEXTURE_2D, m_texID);
+
 			glBindVertexArray(m_vao);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
@@ -82,12 +89,20 @@ namespace gd
 			m_verts[4] = { {1, 1},		{1.0f, 1.0f},	m_color };
 			m_verts[5] = { {-1, 1},		{0.0f, 1.0f},	m_color };
 
+			for (int i = 0; i < 6; i++) {
+				m_verts[i].Position.x *= m_size.x/2;
+				m_verts[i].Position.y *= m_size.y/2;
+			}
+
+
 			// create vao
-			glGenVertexArrays(1, &m_vao);
+			if (m_vao == 0)
+				glGenVertexArrays(1, &m_vao);
 			glBindVertexArray(m_vao);
 
 			// create vbo
-			glGenBuffers(1, &m_vbo);
+			if (m_vbo == 0)
+				glGenBuffers(1, &m_vbo);
 			glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
 			// vbo data

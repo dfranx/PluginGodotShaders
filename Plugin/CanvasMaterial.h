@@ -2,6 +2,8 @@
 #include "Settings.h"
 #include "PipelineItem.h"
 
+#include <glm/glm.hpp>
+
 namespace gd
 {
 	namespace pipe
@@ -14,12 +16,14 @@ namespace gd
 			CanvasMaterial();
 			~CanvasMaterial();
 
+			void SetViewportSize(float x, float y);
 			void Bind();
 			void ShowProperties();
 			void Compile();
 
 		private:
 			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc;
+			glm::mat4 m_projMat;
 		};
 	}
 }

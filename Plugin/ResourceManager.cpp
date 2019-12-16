@@ -38,7 +38,7 @@ void main()
 	color_interp = color_attrib;
 
 	vec4 outvec = modelview_matrix * vec4(vertex, 0.0, 1.0);
-	gl_Position = vec4(vertex, 0.0, 1.0); // projection_matrix * outvec;
+	gl_Position = projection_matrix * vec4(vertex, 0.0, 1.0);
 }
 )";
 
@@ -56,7 +56,7 @@ uniform sampler2D color_texture;
 
 void main()
 {
-	frag_color = vec4(1.0f);//color_interp * texture(color_texture, uv_interp);
+	frag_color = color_interp * texture(color_texture, uv_interp);
 }
 )";
 	}

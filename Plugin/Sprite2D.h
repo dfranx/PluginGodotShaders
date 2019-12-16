@@ -35,6 +35,8 @@ namespace gd
 			std::string m_texName;
 			unsigned int m_texID; // GLuint texture ID
 
+			glm::vec2 m_pos, m_size;
+			
 			glm::vec4 m_color;
 
 			void m_buildVBO();

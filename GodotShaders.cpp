@@ -33,6 +33,7 @@ namespace gd
 		data->Owner = this;
 		m_items.push_back(data);
 
+		data->SetViewportSize(m_rtSize.x, m_rtSize.y);
 		data->Compile();
 	}
 	void GodotShaders::m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex)
@@ -66,30 +67,8 @@ namespace gd
 	{ 
 		m_createSpritePopup = false;
 		m_clearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-		// color texture
+		m_fbo = 0;
 		m_lastSize = glm::vec2(1, 1);
-		glGenTextures(1, &m_fboColor);
-		glBindTexture(GL_TEXTURE_2D, m_fboColor);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_lastSize.x, m_lastSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		// depth texture
-		glGenTextures(1, &m_fboDepth);
-		glBindTexture(GL_TEXTURE_2D, m_fboDepth);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_lastSize.x, m_lastSize.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		// create a FBO
-		glGenFramebuffers(1, &m_fbo);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboColor, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_fboDepth, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		return true; 
 	}
@@ -143,17 +122,22 @@ namespace gd
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
 
-			glBindTexture(GL_TEXTURE_2D, m_fboColor);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_rtSize.x, m_rtSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			// create a FBO
+			if (m_fbo == 0) {
+				glGenFramebuffers(1, &m_fbo);
+				glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GetWindowColorTexture(Renderer), 0);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, GetWindowDepthTexture(Renderer), 0);
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			}
 
-			glBindTexture(GL_TEXTURE_2D, m_fboDepth);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_rtSize.x, m_rtSize.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			// update canvas materials
+			for (int i = 0; i < m_items.size(); i++) {
+				if (m_items[i]->Type == PipelineItemType::CanvasMaterial) {
+					pipe::CanvasMaterial* data = (pipe::CanvasMaterial*)m_items[i];
+					data->SetViewportSize(m_rtSize.x, m_rtSize.y);
+				}
+			}
 		}
 
 		// bind fbo and buffers
@@ -171,7 +155,6 @@ namespace gd
 	}
 	void GodotShaders::EndRender()
 	{
-
 	}
 
 	void GodotShaders::CopyFilesOnSave(const char* dir) { } // TODO: copy all the .shader files
@@ -339,12 +322,11 @@ namespace gd
 	void GodotShaders::AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data)
 	{
 		for (int i = 0; i < m_items.size(); i++)
-			if (strcmp(m_items[i]->Name, name) == 0) {
+			if (strcmp(m_items[i]->Name, owner) == 0) {
+				printf("[GSHADER] Added %s to %s\n", name, owner);
 				m_items[i]->Items.push_back((PipelineItem*)data);
 				break;
 			}
-
-		printf("[GSHADER] Added %s to %s\n", name, owner);
 	}
 	bool GodotShaders::CanPipelineItemHaveChildren(const char* type)
 	{
@@ -357,8 +339,8 @@ namespace gd
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
 		{
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
-
 			odata->Bind();
+			glCullFace(GL_FRONT);
 			for (PipelineItem* item : odata->Items) {
 				if (item->Type == PipelineItemType::Sprite2D) {
 					pipe::Sprite2D* sprite = (pipe::Sprite2D*)item;

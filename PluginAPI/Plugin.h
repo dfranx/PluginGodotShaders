@@ -29,7 +29,8 @@ namespace ed
 
 		typedef bool (*IsPausedFn)(void* renderer);
 		typedef void (*PauseFn)(void* renderer, bool state);
-		typedef void (*GetRenderTextureFn)(void* renderer, unsigned int& out);
+		typedef unsigned int (*GetWindowColorTextureFn)(void* renderer);
+		typedef unsigned int (*GetWindowDepthTextureFn)(void* renderer);
 		typedef void (*GetLastRenderSizeFn)(void* renderer, int& w, int& h);
 		typedef void (*RenderFn)(void* renderer, int w, int h);
 
@@ -72,6 +73,9 @@ namespace ed
 		virtual void Update(float delta) = 0;
 		virtual void Destroy() = 0;
 
+		virtual void BeginRender() = 0;
+		virtual void EndRender() = 0;
+
 		virtual void CopyFilesOnSave(const char* dir) = 0;
 		virtual bool HasCustomMenu() = 0;
 
@@ -79,7 +83,7 @@ namespace ed
 		virtual bool HasMenuItems(const char* name) = 0;
 		virtual void ShowMenuItems(const char* name) = 0;
 
-		/* list: pipeline, shaderpass_add (owner = ShaderPass), pluginitem_add (owner = char* ItemType) objects, editcode (owner = char* ItemName) */
+		/* list: pipeline, shaderpass_add (owner = ShaderPass), pluginitem_add (owner = char* ItemType, extraData = PluginItemData) objects, editcode (owner = char* ItemName) */
 		virtual bool HasContextItems(const char* name) = 0;
 		virtual void ShowContextItems(const char* name, void* owner = nullptr, void* extraData = nullptr) = 0;
 
@@ -172,7 +176,8 @@ namespace ed
 		pluginfn::SaveAsProjectFn SaveAsProject;
 		pluginfn::IsPausedFn IsPaused;
 		pluginfn::PauseFn Pause;
-		pluginfn::GetRenderTextureFn GetRenderTexture;
+		pluginfn::GetWindowColorTextureFn GetWindowColorTexture;
+		pluginfn::GetWindowDepthTextureFn GetWindowDepthTexture;
 		pluginfn::GetLastRenderSizeFn GetLastRenderSize;
 		pluginfn::RenderFn Render;
 		pluginfn::ExistsPipelineItemFn ExistsPipelineItem;

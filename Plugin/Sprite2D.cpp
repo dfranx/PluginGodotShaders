@@ -1,5 +1,9 @@
 #include "Sprite2D.h"
 #include "ResourceManager.h"
+#include "../GodotShaders.h"
+
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_internal.h"
 
 #include <GL/glew.h>
 #if defined(__APPLE__)
@@ -19,6 +23,7 @@ namespace gd
 			m_texName = "";
 			m_vao = 0;
 			m_vbo = 0;
+			Type = PipelineItemType::Sprite2D;
 			m_buildVBO();
 		}
 		Sprite2D::~Sprite2D()
@@ -28,6 +33,12 @@ namespace gd
 
 			if (m_vbo != 0)
 				glDeleteBuffers(1, &m_vbo);
+		}
+
+		void Sprite2D::ShowProperties()
+		{
+			ImGui::Text("Texture:");
+			ImGui::Image((ImTextureID)((gd::GodotShaders*)Owner)->GetMyTexture(), ImVec2(64, 64));
 		}
 
 		void Sprite2D::SetTexture(const std::string& texObjName)

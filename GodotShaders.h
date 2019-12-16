@@ -6,6 +6,13 @@
 #include <vector>
 #include <string>
 
+#include <glm/glm.hpp>
+#include <GL/glew.h>
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
 
 namespace gd
 {
@@ -16,6 +23,9 @@ namespace gd
 		virtual void OnEvent(void* e);
 		virtual void Update(float delta);
 		virtual void Destroy();
+
+		virtual void BeginRender();
+		virtual void EndRender();
 
 		virtual void CopyFilesOnSave(const char* dir);
 		virtual bool HasCustomMenu();
@@ -91,10 +101,20 @@ namespace gd
 		// misc
 		virtual bool HandleDropFile(const char* filename);
 	
+		inline GLuint GetMyTexture() { return m_fboColor; }
 	private:
 		void m_addCanvasMaterial();
-		void m_addSprite(pipe::CanvasMaterial* owner);
+		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
 		
+		bool m_createSpritePopup;
+		std::string m_createSpriteTexture;
+
+		glm::vec2 m_rtSize, m_lastSize;
+		glm::vec4 m_clearColor;
+		GLuint m_fbo, m_fboColor, m_fboDepth;
+
+		PipelineItem* m_popupItem;
+
 		std::vector<gd::PipelineItem*> m_items;
 	};
 }

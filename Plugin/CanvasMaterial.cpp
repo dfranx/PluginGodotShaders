@@ -9,6 +9,9 @@
 #include <string.h>
 #include <string>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <GL/glew.h>
 #if defined(__APPLE__)
 #include <OpenGL/gl.h>
@@ -24,6 +27,7 @@ namespace gd
 	{
 		CanvasMaterial::CanvasMaterial()
 		{
+			Type = PipelineItemType::CanvasMaterial;
 			memset(ShaderPath, 0, sizeof(char) * MAX_PATH_LENGTH);
 			m_shader = 0;
 		}
@@ -33,6 +37,14 @@ namespace gd
 				glDeleteShader(m_shader);
 		}
 
+		void CanvasMaterial::Bind()
+		{
+			// bind shaders
+			glUseProgram(m_shader);
+
+			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+		}
 		void CanvasMaterial::ShowProperties()
 		{
 			ImGui::Columns(2, "##plugin_columns");

@@ -3,7 +3,11 @@
 #include "Plugin/Sprite2D.h"
 
 #include <string.h>
+#include <glm/gtc/type_ptr.hpp>
 #include "imgui/imgui.h"
+
+
+static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
 
 namespace gd
 {
@@ -31,7 +35,7 @@ namespace gd
 
 		data->Compile();
 	}
-	void GodotShaders::m_addSprite(pipe::CanvasMaterial* owner)
+	void GodotShaders::m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex)
 	{
 		// initialize the data
 		pipe::Sprite2D* data = new pipe::Sprite2D();
@@ -54,15 +58,121 @@ namespace gd
 		data->Items.clear();
 		data->Owner = this;
 		m_items.push_back(data);
+
+		data->SetTexture(tex);
 	}
 
-	bool GodotShaders::Init() { return true; }
+	bool GodotShaders::Init()
+	{ 
+		m_createSpritePopup = false;
+		m_clearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+		// color texture
+		m_lastSize = glm::vec2(1, 1);
+		glGenTextures(1, &m_fboColor);
+		glBindTexture(GL_TEXTURE_2D, m_fboColor);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_lastSize.x, m_lastSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		// depth texture
+		glGenTextures(1, &m_fboDepth);
+		glBindTexture(GL_TEXTURE_2D, m_fboDepth);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_lastSize.x, m_lastSize.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		// create a FBO
+		glGenFramebuffers(1, &m_fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboColor, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_fboDepth, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		return true; 
+	}
 	void GodotShaders::OnEvent(void* e) { }
 	void GodotShaders::Update(float delta)
 	{ 
 		// TODO: check every 500ms if ShaderPass is used -> push an error message if yes
+	
+
+		// ##### CREATE SPRITE POPUP #####
+		if (m_createSpritePopup) {
+			ImGui::OpenPopup("Create Sprite##create_godot_sprite");
+			m_createSpriteTexture = "";
+			m_createSpritePopup = false;
+		}
+		ImGui::SetNextWindowSize(ImVec2(330, 100), ImGuiCond_Once);
+		if (ImGui::BeginPopupModal("Create Sprite##create_godot_sprite")) {
+			ImGui::Text("Texture: "); ImGui::SameLine();
+			if (ImGui::BeginCombo("##godot_sprite_texture", m_createSpriteTexture.empty() ? "EMPTY" : m_createSpriteTexture.c_str())) {
+				if (ImGui::Selectable("EMPTY"))
+					m_createSpriteTexture = "";
+
+				int ocnt = GetObjectCount(ObjectManager);
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = GetObjectName(ObjectManager, i);
+					if (IsTexture(ObjectManager, oname)) {
+						unsigned int texID = GetTexture(ObjectManager, oname);
+						if (ImGui::Selectable(oname))
+							m_createSpriteTexture = oname;
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+			if (ImGui::Button("Ok")) {
+				m_addSprite((pipe::CanvasMaterial*)m_popupItem, m_createSpriteTexture);
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel"))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
 	}
 	void GodotShaders::Destroy() { }
+
+	void GodotShaders::BeginRender()
+	{
+		GetViewportSize(m_rtSize.x, m_rtSize.y);
+		if (m_lastSize != m_rtSize) {
+			m_lastSize = m_rtSize;
+
+			glBindTexture(GL_TEXTURE_2D, m_fboColor);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_rtSize.x, m_rtSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+			glBindTexture(GL_TEXTURE_2D, m_fboDepth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_rtSize.x, m_rtSize.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+
+		// bind fbo and buffers
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+		glDrawBuffers(1, fboBuffers);
+
+		glStencilMask(0xFFFFFFFF);
+		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
+
+		// bind RTs
+		glClearBufferfv(GL_COLOR, 0, glm::value_ptr(m_clearColor));
+
+		// update viewport value
+		glViewport(0, 0, m_rtSize.x, m_rtSize.x);
+	}
+	void GodotShaders::EndRender()
+	{
+
+	}
 
 	void GodotShaders::CopyFilesOnSave(const char* dir) { } // TODO: copy all the .shader files
 	bool GodotShaders::HasCustomMenu() { return false; }
@@ -72,7 +182,8 @@ namespace gd
 
 	bool GodotShaders::HasContextItems(const char* name)
 	{ 
-		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0;
+		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0 ||
+			strcmp(name, "editcode") == 0;
 	}
 	void GodotShaders::ShowContextItems(const char* name, void* owner, void* extraData)
 	{
@@ -86,9 +197,14 @@ namespace gd
 			const char* ownerType = (const char*)owner;
 			if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 				if (ImGui::Selectable("Create " ITEM_NAME_SPRITE2D)) {
-					pipe::CanvasMaterial* ownerData = (pipe::CanvasMaterial*)extraData;
-					m_addSprite(ownerData);
+					m_createSpritePopup = true;
+					m_popupItem = (PipelineItem*)extraData;
 				}
+			}
+		}
+		// edit shader code
+		else if (strcmp(name, "editcode") == 0) {
+			if (ImGui::Selectable("Shader")) {
 			}
 		}
 	}
@@ -130,18 +246,28 @@ namespace gd
 	// pipeline item stuff
 	bool GodotShaders::HasPipelineItemProperties(const char* type) 
 	{ 
-		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 ||
+			strcmp(type, ITEM_NAME_SPRITE2D) == 0;
 	}
 	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
 	{ 
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 			pipe::CanvasMaterial* item = (pipe::CanvasMaterial*)data;
 			item->ShowProperties();
+		} else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
+			pipe::Sprite2D* item = (pipe::Sprite2D*)data;
+			item->ShowProperties();
 		}
 	}
 	bool GodotShaders::IsPipelineItemPickable(const char* type) { return false; }
-	bool GodotShaders::HasPipelineItemShaders(const char* type) { return false; }
-	void GodotShaders::OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data) { }
+	bool GodotShaders::HasPipelineItemShaders(const char* type) 
+	{
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+	}
+	void GodotShaders::OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data)
+	{
+		printf("Tried to open %s's shader.", type);
+	}
 	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType)
 	{ 
 		// only allow GItems
@@ -225,8 +351,22 @@ namespace gd
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
 	void* GodotShaders::CopyPipelineItemData(const char* type, void* data) { return nullptr; }
-	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) { }
-	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count) { }
+	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) {}
+	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count)
+	{
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
+		{
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			odata->Bind();
+			for (PipelineItem* item : odata->Items) {
+				if (item->Type == PipelineItemType::Sprite2D) {
+					pipe::Sprite2D* sprite = (pipe::Sprite2D*)item;
+					sprite->Draw();
+				}
+			}
+		}
+	}
 	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float (&pMat)[16]) { }
 	bool GodotShaders::IntersectPipelineItem(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) { return false; }
 	void GodotShaders::GetPipelineItemBoundingBox(const char* name, float(&minPos)[3], float(&maxPos)[3]) { }

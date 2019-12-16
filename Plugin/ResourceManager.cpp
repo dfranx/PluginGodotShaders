@@ -38,7 +38,7 @@ void main()
 	color_interp = color_attrib;
 
 	vec4 outvec = modelview_matrix * vec4(vertex, 0.0, 1.0);
-	gl_Position = projection_matrix * outvec;
+	gl_Position = vec4(vertex, 0.0, 1.0); // projection_matrix * outvec;
 }
 )";
 
@@ -56,7 +56,7 @@ uniform sampler2D color_texture;
 
 void main()
 {
-	frag_color = color_interp * texture(color_texture, uv_interp);
+	frag_color = vec4(1.0f);//color_interp * texture(color_texture, uv_interp);
 }
 )";
 	}
@@ -68,13 +68,18 @@ void main()
 	{
 		unsigned char* pData = (unsigned char*)malloc(EMPTY_TEXTURE_SIZE * EMPTY_TEXTURE_SIZE * 4);
 
-		// TODO: checkered texture
+		// checkered texture
+		int pxs = EMPTY_TEXTURE_SIZE / 8;
 		for (int x = 0; x < EMPTY_TEXTURE_SIZE; x++) {
 			for (int y = 0; y < EMPTY_TEXTURE_SIZE; y++) {
-				unsigned char* group = &pData[(y * EMPTY_TEXTURE_SIZE + x) * 4];
-				group[0] = 255;
-				group[1] = 255;
-				group[2] = 255;
+				int index = (y * EMPTY_TEXTURE_SIZE + x) * 4;
+				unsigned char* group = &pData[index];
+
+				unsigned char clr = (((x / pxs) + (y / pxs)) % 2) * 255;
+
+				group[0] = clr;
+				group[1] = clr;
+				group[2] = clr;
 				group[3] = 255;
 			}
 		}

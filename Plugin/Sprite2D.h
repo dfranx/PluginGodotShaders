@@ -18,6 +18,8 @@ namespace gd
 			void SetTexture(const std::string& texObjName);
 			void SetColor(glm::vec4 clr);
 
+			void ShowProperties();
+
 			void Draw();
 
 			inline glm::vec4 GetColor() { return m_color; }

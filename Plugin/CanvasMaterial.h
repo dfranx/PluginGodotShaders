@@ -14,6 +14,7 @@ namespace gd
 			CanvasMaterial();
 			~CanvasMaterial();
 
+			void Bind();
 			void ShowProperties();
 			void Compile();
 

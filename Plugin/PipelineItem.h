@@ -5,6 +5,11 @@
 
 namespace gd
 {
+	enum class PipelineItemType
+	{
+		CanvasMaterial,
+		Sprite2D
+	};
 
 	class PipelineItem
 	{
@@ -15,5 +20,6 @@ namespace gd
 		char Name[PIPELINE_ITEM_NAME_LENGTH];
 		std::vector<PipelineItem*> Items;
 		ed::IPlugin* Owner;
+		PipelineItemType Type;
 	};
 }

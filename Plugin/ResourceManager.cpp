@@ -56,7 +56,7 @@ uniform sampler2D color_texture;
 
 void main()
 {
-	frag_color = vec4(1.0f); //color_interp * texture(color_texture, uv_interp);
+	frag_color = color_interp;// * texture(color_texture, uv_interp);
 }
 )";
 	}

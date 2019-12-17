@@ -141,8 +141,8 @@ namespace gd
 				Owner->Log(infoLog, true, nullptr, -1);
 			}
 
-			glDeleteShader(canvasPS);
-			glDeleteShader(canvasVS);
+			//glDeleteShader(canvasPS);
+			//glDeleteShader(canvasVS);
 
 			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
 			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");

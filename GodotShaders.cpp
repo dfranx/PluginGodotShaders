@@ -118,6 +118,8 @@ namespace gd
 
 	void GodotShaders::BeginRender()
 	{
+		BindDefaultState();
+
 		GetViewportSize(m_rtSize.x, m_rtSize.y);
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
@@ -151,7 +153,7 @@ namespace gd
 		glClearBufferfv(GL_COLOR, 0, glm::value_ptr(m_clearColor));
 
 		// update viewport value
-		glViewport(0, 0, m_rtSize.x, m_rtSize.x);
+		glViewport(0, 0, m_rtSize.x, m_rtSize.y);
 	}
 	void GodotShaders::EndRender()
 	{

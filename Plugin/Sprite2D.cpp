@@ -124,6 +124,8 @@ namespace gd
 
 			glBindVertexArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			m_buildMatrix();
 		}
 		void Sprite2D::m_buildMatrix()
 		{

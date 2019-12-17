@@ -21,9 +21,12 @@ namespace gd
 			void ShowProperties();
 			void Compile();
 
+			inline void SetModelMatrix(glm::mat4 mat) { m_modelMat = mat; }
+
 		private:
 			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc;
 			glm::mat4 m_projMat;
+			glm::mat4 m_modelMat;
 		};
 	}
 }

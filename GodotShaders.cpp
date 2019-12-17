@@ -340,10 +340,10 @@ namespace gd
 		{
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
 			odata->Bind();
-			glCullFace(GL_FRONT);
 			for (PipelineItem* item : odata->Items) {
 				if (item->Type == PipelineItemType::Sprite2D) {
 					pipe::Sprite2D* sprite = (pipe::Sprite2D*)item;
+					odata->SetModelMatrix(sprite->GetMatrix());
 					sprite->Draw();
 				}
 			}

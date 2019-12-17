@@ -5,6 +5,9 @@
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
 
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <GL/glew.h>
 #if defined(__APPLE__)
 #include <OpenGL/gl.h>
@@ -41,6 +44,11 @@ namespace gd
 		{
 			ImGui::Text("Texture:");
 			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64));
+
+			if (ImGui::InputFloat2("##test", glm::value_ptr(m_pos)))
+				m_buildMatrix();
+			if (ImGui::InputFloat2("##test2", glm::value_ptr(m_size)))
+				m_buildMatrix();
 		}
 
 		void Sprite2D::SetTexture(const std::string& texObjName)
@@ -89,12 +97,6 @@ namespace gd
 			m_verts[4] = { {1, 1},		{1.0f, 1.0f},	m_color };
 			m_verts[5] = { {-1, 1},		{0.0f, 1.0f},	m_color };
 
-			for (int i = 0; i < 6; i++) {
-				m_verts[i].Position.x *= m_size.x/2;
-				m_verts[i].Position.y *= m_size.y/2;
-			}
-
-
 			// create vao
 			if (m_vao == 0)
 				glGenVertexArrays(1, &m_vao);
@@ -122,6 +124,13 @@ namespace gd
 
 			glBindVertexArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
+		void Sprite2D::m_buildMatrix()
+		{
+			glm::vec3 scaleRect(m_size.x, m_size.y, 1.0f);
+			glm::vec3 posRect((m_pos.x + 0.5f) * m_size.x, (m_pos.y + 0.5f) * m_size.y, -1000.0f);
+			m_matrix = glm::translate(glm::mat4(1), posRect) *
+				glm::scale(glm::mat4(1.0f), scaleRect);
 		}
 	}
 }

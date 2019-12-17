@@ -18,6 +18,8 @@ namespace gd
 			void SetTexture(const std::string& texObjName);
 			void SetColor(glm::vec4 clr);
 
+			inline glm::mat4 GetMatrix() { return m_matrix; }
+
 			void ShowProperties();
 
 			void Draw();
@@ -37,6 +39,9 @@ namespace gd
 
 			glm::vec2 m_pos, m_size;
 			
+			void m_buildMatrix();
+			glm::mat4 m_matrix;
+
 			glm::vec4 m_color;
 
 			void m_buildVBO();

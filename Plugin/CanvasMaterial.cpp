@@ -30,6 +30,7 @@ namespace gd
 			Type = PipelineItemType::CanvasMaterial;
 			memset(ShaderPath, 0, sizeof(char) * MAX_PATH_LENGTH);
 			m_shader = 0;
+			m_modelMat = m_projMat = glm::mat4(1.0f);
 		}
 		CanvasMaterial::~CanvasMaterial()
 		{
@@ -38,10 +39,6 @@ namespace gd
 		}
 		void CanvasMaterial::SetViewportSize(float w, float h)
 		{
-			printf("%.2f %.2f\n", w, h);
-			float mat[16];
-			Owner->GetOrthographicMatrix(&mat[0]);
-
 			m_projMat = glm::ortho(0.0f, w, h, 0.0f, 0.1f, 1000.0f);
 		}
 		void CanvasMaterial::Bind()
@@ -49,8 +46,8 @@ namespace gd
 			// bind shaders
 			glUseProgram(m_shader);
 
-			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_TRUE, glm::value_ptr(m_projMat));
-			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_projMat));
+			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
 		}
 		void CanvasMaterial::ShowProperties()
 		{

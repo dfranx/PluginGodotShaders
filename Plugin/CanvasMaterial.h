@@ -22,7 +22,7 @@ namespace gd
 			void ShowProperties();
 			void Compile();
 
-			inline void SetModelMatrix(glm::mat4 mat) { m_modelMat = mat; }
+			void SetModelMatrix(glm::mat4 mat);
 
 		private:
 			gd::GLSLOutput m_glslData;

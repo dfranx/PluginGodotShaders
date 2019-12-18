@@ -2,6 +2,7 @@
 #include "ResourceManager.h"
 #include "../PluginAPI/Plugin.h"
 #include "../UI/UIHelper.h"
+#include "../GodotShaders.h"
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
@@ -53,7 +54,7 @@ namespace gd
 		}
 		void CanvasMaterial::SetViewportSize(float w, float h)
 		{
-			m_projMat = glm::ortho(0.0f, w, 0.0f, h, 0.1f, 1000.0f);
+			m_projMat = glm::ortho(0.0f, w, h, 0.0f, 0.1f, 1000.0f);
 		}
 		void CanvasMaterial::Bind()
 		{
@@ -61,7 +62,6 @@ namespace gd
 			glUseProgram(m_shader);
 
 			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_projMat));
-			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
 		}
 		void CanvasMaterial::ShowProperties()
 		{
@@ -102,6 +102,7 @@ namespace gd
 					}
 					else
 						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist");
+					((gd::GodotShaders*)Owner)->ShaderPathsUpdated = true;
 				}
 			}
 			ImGui::NextColumn();
@@ -110,6 +111,11 @@ namespace gd
 			ImGui::Columns(1);
 		}
 
+		void CanvasMaterial::SetModelMatrix(glm::mat4 mat)
+		{
+			m_modelMat = mat;
+			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
+		}
 		void CanvasMaterial::Compile()
 		{
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();

@@ -1,6 +1,5 @@
 #include "Sprite2D.h"
 #include "ResourceManager.h"
-#include "../GodotShaders.h"
 #include "../UI/UIHelper.h"
 
 #include "../imgui/imgui.h"
@@ -67,7 +66,7 @@ namespace gd
 
 			ImGui::Text("Position: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
-			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos), 0.05f))
+			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos)))
 				m_buildMatrix();
 			ImGui::PopItemWidth(); ImGui::Separator();
 
@@ -156,11 +155,8 @@ namespace gd
 		}
 		void Sprite2D::m_buildMatrix()
 		{
-			float w, h;
-			Owner->GetViewportSize(w, h);
-
 			glm::vec3 scaleRect(m_size.x, m_size.y, 1.0f);
-			glm::vec3 posRect((m_pos.x + 0.5f) * w, (m_pos.y + 0.5f) * h, -1000.0f);
+			glm::vec3 posRect(m_pos.x + m_size.x/2, m_pos.y + m_size.y / 2, -1000.0f);
 			m_matrix = glm::translate(glm::mat4(1), posRect) *
 				glm::scale(glm::mat4(1.0f), scaleRect);
 		}

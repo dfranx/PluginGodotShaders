@@ -128,13 +128,12 @@ namespace gd
 		// main()
 		out.Vertex += "void main()\n{\n";
 		out.Vertex += "\tvec4 color = color_attrib;\n";
-		out.Vertex += "\tvec4 outvec = vec4(vertex, 0.0, 1.0);\n";
+		out.Vertex += "\tvec4 outvec = modelview_matrix * vec4(vertex, 0.0, 1.0);\n";
 		out.Vertex += "\tfloat point_size = 1.0;\n";
 		out.Vertex += "\tvec2 uv = uv_attrib;\n";
 		out.Vertex += genCode.vertex;
 		out.Vertex += "\tgl_PointSize = point_size;\n";
 		out.Vertex += "\tuv_interp = uv;\n";
-		out.Vertex += "\toutvec = modelview_matrix * outvec;\n";
 		out.Vertex += "\tcolor_interp = color;\n";
 		out.Vertex += "\tgl_Position = projection_matrix * outvec;\n";
 		out.Vertex += "}\n";

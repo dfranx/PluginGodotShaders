@@ -19,6 +19,11 @@ namespace gd
 			void SetColor(glm::vec4 clr);
 
 			inline glm::mat4 GetMatrix() { return m_matrix; }
+			inline const std::string& GetTexture() { return m_texName; }
+			inline void SetPosition(glm::vec2 pos) { m_pos = pos; m_buildMatrix(); }
+			inline void SetSize(glm::vec2 pos) { m_size = pos; m_buildMatrix(); }
+			inline glm::vec2 GetPosition() { return m_pos; }
+			inline glm::vec2 GetSize() { return m_size; }
 
 			void ShowProperties();
 

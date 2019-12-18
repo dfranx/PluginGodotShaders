@@ -59,24 +59,25 @@ namespace gd
 		strcpy(data->Name, name.c_str());
 		data->Items.clear();
 		data->Owner = this;
-		
+
 		data->SetTexture(tex);
 	}
 
 	bool GodotShaders::Init()
-	{ 
+	{
 		m_createSpritePopup = false;
 		m_clearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		m_fbo = 0;
 		m_lastSize = glm::vec2(1, 1);
+		ShaderPathsUpdated = false;
 
-		return true; 
+		return true;
 	}
 	void GodotShaders::OnEvent(void* e) { }
 	void GodotShaders::Update(float delta)
-	{ 
+	{
 		// TODO: check every 500ms if ShaderPass is used -> push an error message if yes
-	
+
 
 		// ##### CREATE SPRITE POPUP #####
 		if (m_createSpritePopup) {
@@ -164,7 +165,7 @@ namespace gd
 	void GodotShaders::ShowMenuItems(const char* name) { }
 
 	bool GodotShaders::HasContextItems(const char* name)
-	{ 
+	{
 		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0 ||
 			strcmp(name, "editcode") == 0;
 	}
@@ -218,7 +219,7 @@ namespace gd
 	void GodotShaders::RemoveObject(const char* name, const char* type, void* data, unsigned int id) { }
 	bool GodotShaders::HasObjectExtendedPreview(const char* type) { return false; }
 	void GodotShaders::ShowObjectExtendedPreview(const char* type, void* data, unsigned int id) { }
-	bool GodotShaders::HasObjectProperties(const char* type) { return false;  }
+	bool GodotShaders::HasObjectProperties(const char* type) { return false; }
 	void GodotShaders::ShowObjectProperties(const char* type, void* data, unsigned int id) { }
 	void GodotShaders::BindObject(const char* type, void* data, unsigned int id) { }
 	const char* GodotShaders::ExportObject(char* type, void* data, unsigned int id) { return nullptr; }
@@ -227,23 +228,24 @@ namespace gd
 	void GodotShaders::ShowObjectContext(const char* type, void* data) { }
 
 	// pipeline item stuff
-	bool GodotShaders::HasPipelineItemProperties(const char* type) 
-	{ 
+	bool GodotShaders::HasPipelineItemProperties(const char* type)
+	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 ||
 			strcmp(type, ITEM_NAME_SPRITE2D) == 0;
 	}
 	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
-	{ 
+	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 			pipe::CanvasMaterial* item = (pipe::CanvasMaterial*)data;
 			item->ShowProperties();
-		} else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
+		}
+		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
 			pipe::Sprite2D* item = (pipe::Sprite2D*)data;
 			item->ShowProperties();
 		}
 	}
 	bool GodotShaders::IsPipelineItemPickable(const char* type) { return false; }
-	bool GodotShaders::HasPipelineItemShaders(const char* type) 
+	bool GodotShaders::HasPipelineItemShaders(const char* type)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
@@ -252,7 +254,7 @@ namespace gd
 		printf("Tried to open %s's shader.", type);
 	}
 	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType)
-	{ 
+	{
 		// only allow GItems
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 && itemType == ed::plugin::PipelineItemType::PluginItem;
 	}
@@ -264,13 +266,19 @@ namespace gd
 		for (size_t i = 0; i < m_items.size(); i++) {
 			// check for main items
 			if (strcmp(m_items[i]->Name, itemName) == 0) {
+				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
+					printf("[GSHADER] Deleting %s\n", m_items[i]->Items[j]->Name);
+					delete m_items[i]->Items[j];
+				}
+
 				delete m_items[i];
 				m_items.erase(m_items.begin() + i);
 
 				printf("[GSHADER] Deleting %s\n", itemName);
 
 				break;
-			} else {
+			}
+			else {
 				// check for children items
 				bool found = false;
 				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
@@ -332,13 +340,30 @@ namespace gd
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
-	void* GodotShaders::CopyPipelineItemData(const char* type, void* data) { return nullptr; }
+	void* GodotShaders::CopyPipelineItemData(const char* type, void* data)
+	{
+		if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
+			gd::pipe::Sprite2D* idata = (gd::pipe::Sprite2D*)data;
+			gd::pipe::Sprite2D* newData = new gd::pipe::Sprite2D();
+
+			strcpy(newData->Name, idata->Name);
+			newData->Owner = idata->Owner;
+			newData->Items = idata->Items;
+			newData->SetColor(idata->GetColor());
+			newData->SetTexture(idata->GetTexture());
+			newData->SetPosition(idata->GetPosition());
+			newData->SetSize(idata->GetSize());
+
+			return (void*)newData;
+		}
+		return nullptr;
+	}
 	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) {}
 	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count)
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
 		{
-			//glDisable(GL_CULL_FACE);
+			glDisable(GL_CULL_FACE);
 
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
 			odata->Bind();
@@ -350,10 +375,10 @@ namespace gd
 				}
 			}
 
-			//glEnable(GL_CULL_FACE);
+			glEnable(GL_CULL_FACE);
 		}
 	}
-	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float (&pMat)[16]) { }
+	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float(&pMat)[16]) { }
 	bool GodotShaders::IntersectPipelineItem(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) { return false; }
 	void GodotShaders::GetPipelineItemBoundingBox(const char* name, float(&minPos)[3], float(&maxPos)[3]) { }
 	bool GodotShaders::HasPipelineItemContext(const char* type)
@@ -380,4 +405,30 @@ namespace gd
 
 	// misc
 	bool GodotShaders::HandleDropFile(const char* filename) { return false; }
+	void GodotShaders::HandleRecompile()
+	{
+		for (auto& item : m_items)
+		{
+			if (item->Type == PipelineItemType::CanvasMaterial) {
+				gd::pipe::CanvasMaterial* data = (gd::pipe::CanvasMaterial*)item;
+				data->Compile();
+			}
+		}
+	}
+	int GodotShaders::GetShaderFilePathCount()
+	{
+		return m_items.size();
+	}
+	const char* GodotShaders::GetShaderFilePath(int index)
+	{
+		return ((pipe::CanvasMaterial*)m_items[index])->ShaderPath;
+	}
+	bool GodotShaders::HasShaderFilePathChanged()
+	{
+		return ShaderPathsUpdated;
+	}
+	void GodotShaders::UpdateShaderFilePath()
+	{
+		ShaderPathsUpdated = false;
+	}
 }

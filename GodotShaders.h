@@ -100,6 +100,15 @@ namespace gd
 
 		// misc
 		virtual bool HandleDropFile(const char* filename);
+		virtual void HandleRecompile();
+		virtual int GetShaderFilePathCount();
+		virtual const char* GetShaderFilePath(int index);
+		virtual bool HasShaderFilePathChanged();
+		virtual void UpdateShaderFilePath();
+
+
+
+		bool ShaderPathsUpdated;
 	private:
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);

@@ -1,6 +1,7 @@
 #pragma once
 #include "Settings.h"
 #include "PipelineItem.h"
+#include "../GodotShaderTranscompiler/ShaderTranscompiler.h"
 
 #include <glm/glm.hpp>
 
@@ -24,6 +25,8 @@ namespace gd
 			inline void SetModelMatrix(glm::mat4 mat) { m_modelMat = mat; }
 
 		private:
+			gd::GLSLOutput m_glslData;
+
 			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc;
 			glm::mat4 m_projMat;
 			glm::mat4 m_modelMat;

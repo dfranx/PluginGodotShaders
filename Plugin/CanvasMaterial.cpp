@@ -7,6 +7,7 @@
 #include "../imgui/imgui_internal.h"
 
 #include <string.h>
+#include <fstream>
 #include <string>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -20,6 +21,19 @@
 #endif
 
 #define BUTTON_SPACE_LEFT -40 * Owner->GetDPI()
+
+std::string LoadFile(const std::string& file)
+{
+	std::ifstream in(file);
+	if (in.is_open()) {
+		in.seekg(0, std::ios::beg);
+
+		std::string content((std::istreambuf_iterator<char>(in)), (std::istreambuf_iterator<char>()));
+		in.close();
+		return content;
+	}
+	return "";
+}
 
 namespace gd
 {
@@ -39,7 +53,7 @@ namespace gd
 		}
 		void CanvasMaterial::SetViewportSize(float w, float h)
 		{
-			m_projMat = glm::ortho(0.0f, w, h, 0.0f, 0.1f, 1000.0f);
+			m_projMat = glm::ortho(0.0f, w, 0.0f, h, 0.1f, 1000.0f);
 		}
 		void CanvasMaterial::Bind()
 		{
@@ -98,8 +112,22 @@ namespace gd
 
 		void CanvasMaterial::Compile()
 		{
-			const char* vsCode = ResourceManager::Instance().GetDefaultCanvasVertexShader().c_str();
-			const char* psCode = ResourceManager::Instance().GetDefaultCanvasPixelShader().c_str();
+			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
+			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
+
+			if (strlen(ShaderPath) != 0) {
+				char outPath[MAX_PATH_LENGTH];
+				Owner->GetProjectPath(Owner->Project, ShaderPath, outPath);
+
+				std::string godotShaderContents = LoadFile(outPath);
+				gd::ShaderTranscompiler::Transcompile(godotShaderContents, m_glslData);
+
+				vsCodeContent = m_glslData.Vertex;
+				psCodeContent = m_glslData.Fragment;
+			}
+
+			const char* vsCode = vsCodeContent.c_str();
+			const char* psCode = psCodeContent.c_str();
 
 			GLint success = 0;
 			char infoLog[512];

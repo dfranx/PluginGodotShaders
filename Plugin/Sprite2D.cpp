@@ -1,6 +1,7 @@
 #include "Sprite2D.h"
 #include "ResourceManager.h"
 #include "../GodotShaders.h"
+#include "../UI/UIHelper.h"
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"
@@ -29,7 +30,6 @@ namespace gd
 			m_vao = 0;
 			m_vbo = 0;
 			Type = PipelineItemType::Sprite2D;
-			m_buildVBO();
 		}
 		Sprite2D::~Sprite2D()
 		{
@@ -43,12 +43,39 @@ namespace gd
 		void Sprite2D::ShowProperties()
 		{
 			ImGui::Text("Texture:");
-			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64));
+			ImGui::SameLine();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::BeginCombo("##godot_sprite_texture", m_texName.empty() ? "EMPTY" : UIHelper::TrimFilename(m_texName).c_str())) {
+				if (ImGui::Selectable("EMPTY"))
+					SetTexture("");
 
-			if (ImGui::InputFloat2("##test", glm::value_ptr(m_pos)))
+				int ocnt = Owner->GetObjectCount(Owner->ObjectManager);
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = Owner->GetObjectName(Owner->ObjectManager, i);
+					if (Owner->IsTexture(Owner->ObjectManager, oname)) {
+						unsigned int texID = Owner->GetTexture(Owner->ObjectManager, oname);
+						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str()))
+							SetTexture(oname);
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+			ImGui::PopItemWidth();
+			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64), ImVec2(1,1), ImVec2(0,0));
+			ImGui::Separator();
+
+			ImGui::Text("Position: "); ImGui::SameLine();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos), 0.05f))
 				m_buildMatrix();
-			if (ImGui::InputFloat2("##test2", glm::value_ptr(m_size)))
+			ImGui::PopItemWidth(); ImGui::Separator();
+
+			ImGui::Text("Size: "); ImGui::SameLine();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::DragFloat2("##gsprite_props_size", glm::value_ptr(m_size)))
 				m_buildMatrix();
+			ImGui::PopItemWidth(); ImGui::Separator();
 		}
 
 		void Sprite2D::SetTexture(const std::string& texObjName)
@@ -90,12 +117,12 @@ namespace gd
 
 		void Sprite2D::m_buildVBO()
 		{
-			m_verts[0] = { {-1, -1},	{0.0f, 0.0f},	m_color };
-			m_verts[1] = { {1, -1},		{1.0f, 0.0f},	m_color };
-			m_verts[2] = { {1, 1},		{1.0f, 1.0f},	m_color };
-			m_verts[3] = { {-1, -1},	{0.0f, 0.0f},	m_color };
-			m_verts[4] = { {1, 1},		{1.0f, 1.0f},	m_color };
-			m_verts[5] = { {-1, 1},		{0.0f, 1.0f},	m_color };
+			m_verts[0] = { {-0.5f, -0.5f},		{0.0f, 0.0f},	m_color };
+			m_verts[1] = { {0.5f, -0.5f},		{1.0f, 0.0f},	m_color };
+			m_verts[2] = { {0.5f, 0.5f},		{1.0f, 1.0f},	m_color };
+			m_verts[3] = { {-0.5f, -0.5f},		{0.0f, 0.0f},	m_color };
+			m_verts[4] = { {0.5f, 0.5f},		{1.0f, 1.0f},	m_color };
+			m_verts[5] = { {-0.5f, 0.5f},		{0.0f, 1.0f},	m_color };
 
 			// create vao
 			if (m_vao == 0)
@@ -129,8 +156,11 @@ namespace gd
 		}
 		void Sprite2D::m_buildMatrix()
 		{
+			float w, h;
+			Owner->GetViewportSize(w, h);
+
 			glm::vec3 scaleRect(m_size.x, m_size.y, 1.0f);
-			glm::vec3 posRect((m_pos.x + 0.5f) * m_size.x, (m_pos.y + 0.5f) * m_size.y, -1000.0f);
+			glm::vec3 posRect((m_pos.x + 0.5f) * w, (m_pos.y + 0.5f) * h, -1000.0f);
 			m_matrix = glm::translate(glm::mat4(1), posRect) *
 				glm::scale(glm::mat4(1.0f), scaleRect);
 		}

@@ -62,8 +62,8 @@ namespace gd
 		out.Fragment = "#version 330\n";
 
 		// inputs
-		out.Fragment += "layout(location = 0) in vec2 uv_interp;\n";
-		out.Fragment += "layout(location = 1) in vec4 color_interp;\n\n";
+		out.Fragment += "in vec2 uv_interp;\n";
+		out.Fragment += "in vec4 color_interp;\n\n";
 
 		// output
 		out.Fragment += "layout(location = 0) out vec4 frag_color;\n\n";
@@ -109,8 +109,8 @@ namespace gd
 		out.Vertex += "layout(location = 2) in vec2 uv_attrib;\n\n";
 
 		// output
-		out.Vertex += "layout(location = 0) out vec2 uv_interp;\n";
-		out.Vertex += "layout(location = 1) out vec4 color_interp;\n\n";
+		out.Vertex += "out vec2 uv_interp;\n";
+		out.Vertex += "out vec4 color_interp;\n\n";
 
 		// user uniforms
 		for (const auto& key : out.Uniforms)

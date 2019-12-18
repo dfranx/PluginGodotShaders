@@ -1,6 +1,7 @@
 #include "GodotShaders.h"
 #include "Plugin/CanvasMaterial.h"
 #include "Plugin/Sprite2D.h"
+#include "UI/UIHelper.h"
 
 #include <string.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -58,8 +59,7 @@ namespace gd
 		strcpy(data->Name, name.c_str());
 		data->Items.clear();
 		data->Owner = this;
-		m_items.push_back(data);
-
+		
 		data->SetTexture(tex);
 	}
 
@@ -87,7 +87,7 @@ namespace gd
 		ImGui::SetNextWindowSize(ImVec2(330, 100), ImGuiCond_Once);
 		if (ImGui::BeginPopupModal("Create Sprite##create_godot_sprite")) {
 			ImGui::Text("Texture: "); ImGui::SameLine();
-			if (ImGui::BeginCombo("##godot_sprite_texture", m_createSpriteTexture.empty() ? "EMPTY" : m_createSpriteTexture.c_str())) {
+			if (ImGui::BeginCombo("##godot_sprite_texture", m_createSpriteTexture.empty() ? "EMPTY" : UIHelper::TrimFilename(m_createSpriteTexture).c_str())) {
 				if (ImGui::Selectable("EMPTY"))
 					m_createSpriteTexture = "";
 
@@ -96,7 +96,7 @@ namespace gd
 					const char* oname = GetObjectName(ObjectManager, i);
 					if (IsTexture(ObjectManager, oname)) {
 						unsigned int texID = GetTexture(ObjectManager, oname);
-						if (ImGui::Selectable(oname))
+						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str()))
 							m_createSpriteTexture = oname;
 					}
 				}
@@ -118,8 +118,6 @@ namespace gd
 
 	void GodotShaders::BeginRender()
 	{
-		BindDefaultState();
-
 		GetViewportSize(m_rtSize.x, m_rtSize.y);
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
@@ -340,6 +338,8 @@ namespace gd
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
 		{
+			//glDisable(GL_CULL_FACE);
+
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
 			odata->Bind();
 			for (PipelineItem* item : odata->Items) {
@@ -349,13 +349,28 @@ namespace gd
 					sprite->Draw();
 				}
 			}
+
+			//glEnable(GL_CULL_FACE);
 		}
 	}
 	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float (&pMat)[16]) { }
 	bool GodotShaders::IntersectPipelineItem(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) { return false; }
 	void GodotShaders::GetPipelineItemBoundingBox(const char* name, float(&minPos)[3], float(&maxPos)[3]) { }
-	bool GodotShaders::HasPipelineItemContext(const char* type) { return false; }
-	void GodotShaders::ShowPipelineItemContext(const char* type, void* data) { }
+	bool GodotShaders::HasPipelineItemContext(const char* type)
+	{
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+	}
+	void GodotShaders::ShowPipelineItemContext(const char* type, void* data)
+	{
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
+		{
+			if (ImGui::Selectable("Compile"))
+			{
+				pipe::CanvasMaterial* idata = (pipe::CanvasMaterial*)data;
+				idata->Compile();
+			}
+		}
+	}
 	const char* GodotShaders::ExportPipelineItem(const char* type, void* data) { return nullptr; }
 	void* GodotShaders::ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString) { return nullptr; }
 

@@ -1,14 +1,28 @@
-#include "GodotShaders.h"
+﻿#include "GodotShaders.h"
 #include "Plugin/CanvasMaterial.h"
 #include "Plugin/Sprite2D.h"
 #include "UI/UIHelper.h"
 
+#include <utility>
+#include <fstream>
 #include <string.h>
 #include <glm/gtc/type_ptr.hpp>
 #include "imgui/imgui.h"
 
 
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
+
+static const char* SLang_Keywords[] = {
+	"shader_type", "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
+	"signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
+	"_Noreturn", "_Static_assert", "_Thread_local", "attribute", "uniform", "varying", "layout", "centroid", "flat", "smooth", "noperspective", "patch", "sample", "subroutine", "in", "out", "inout",
+	"bool", "true", "false", "invariant", "mat2", "mat3", "mat4", "dmat2", "dmat3", "dmat4", "mat2x2", "mat2x3", "mat2x4", "dmat2x2", "dmat2x3", "dmat2x4", "mat3x2", "mat3x3", "mat3x4", "dmat3x2", "dmat3x3", "dmat3x4",
+	"mat4x2", "mat4x3", "mat4x4", "dmat4x2", "dmat4x3", "dmat4x4", "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "bvec2", "bvec3", "bvec4", "dvec2", "dvec3", "dvec4", "uint", "uvec2", "uvec3", "uvec4",
+	"lowp", "mediump", "highp", "precision", "sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler1DShadow", "sampler2DShadow", "samplerCubeShadow", "sampler1DArray", "sampler2DArray", "sampler1DArrayShadow",
+	"sampler2DArrayShadow", "isampler1D", "isampler2D", "isampler3D", "isamplerCube", "isampler1DArray", "isampler2DArray", "usampler1D", "usampler2D", "usampler3D", "usamplerCube", "usampler1DArray", "usampler2DArray",
+	"sampler2DRect", "sampler2DRectShadow", "isampler2DRect", "usampler2DRect", "samplerBuffer", "isamplerBuffer", "usamplerBuffer", "sampler2DMS", "isampler2DMS", "usampler2DMS", "sampler2DMSArray", "isampler2DMSArray",
+	"usampler2DMSArray", "samplerCubeArray", "samplerCubeArrayShadow", "isamplerCubeArray", "usamplerCubeArray"
+};
 
 namespace gd
 {
@@ -70,6 +84,8 @@ namespace gd
 		m_fbo = 0;
 		m_lastSize = glm::vec2(1, 1);
 		ShaderPathsUpdated = false;
+		m_editorCurrentID = 0;
+		m_buildLangDefIdentifiers();
 
 		return true;
 	}
@@ -189,6 +205,11 @@ namespace gd
 		// edit shader code
 		else if (strcmp(name, "editcode") == 0) {
 			if (ImGui::Selectable("Shader")) {
+				pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)owner;
+				OpenInCodeEditor(CodeEditor, GetPipelineItem(PipelineManager, odata->Name), odata->ShaderPath, m_editorCurrentID);
+				m_editorID.push_back(m_editorCurrentID);
+				m_editorOpened.push_back(odata->ShaderPath);
+				m_editorCurrentID++;
 			}
 		}
 	}
@@ -403,13 +424,277 @@ namespace gd
 	bool GodotShaders::HasSectionInOptions() { return false; }
 	void GodotShaders::ShowOptions() { }
 
+	// code editor
+	void GodotShaders::m_buildLangDefIdentifiers()
+	{
+		m_langDefIdentifiers.clear();
+		m_langDefIdentifiers.push_back(std::make_pair("radians", "Converts x from degrees to radians."));
+		m_langDefIdentifiers.push_back(std::make_pair("degrees", "Converts x from radians to degrees."));
+		m_langDefIdentifiers.push_back(std::make_pair("sin", "Returns the sine of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("cos", "Returns the cosine of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("tan", "Returns the tangent of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("asin", "Returns the arcsine of each component of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("acos", "Returns the arccosine of each component of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("atan", "Returns the arctangent of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("sinh", "Returns the hyperbolic sine of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("cosh", "Returns the hyperbolic cosine of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("tanh", "Returns the hyperbolic tangent of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("asinh", "Returns the arc hyperbolic sine of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("acosh", "Returns the arc hyperbolic cosine of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("atanh", "Returns the arc hyperbolic tangent of x"));
+		m_langDefIdentifiers.push_back(std::make_pair("pow", "Returns x^n."));
+		m_langDefIdentifiers.push_back(std::make_pair("exp", "Returns the base-e exponent."));
+		m_langDefIdentifiers.push_back(std::make_pair("exp2", "Base 2 exponent(per component)."));
+		m_langDefIdentifiers.push_back(std::make_pair("log", "Returns the base-e logarithm of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("log2", "Returns the base - 2 logarithm of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("sqrt", "Square root (per component)."));
+		m_langDefIdentifiers.push_back(std::make_pair("inversesqrt", "Returns rcp(sqrt(x))."));
+		m_langDefIdentifiers.push_back(std::make_pair("abs", "Absolute value (per component)."));
+		m_langDefIdentifiers.push_back(std::make_pair("sign", "Computes the sign of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("floor", "Returns the greatest integer which is less than or equal to x."));
+		m_langDefIdentifiers.push_back(std::make_pair("trunc", "Truncates floating-point value(s) to integer value(s)"));
+		m_langDefIdentifiers.push_back(std::make_pair("round", "Rounds x to the nearest integer"));
+		m_langDefIdentifiers.push_back(std::make_pair("roundEven", "Returns a value equal to the nearest integer to x. A fractional part of 0.5 will round toward the nearest even integer."));
+		m_langDefIdentifiers.push_back(std::make_pair("ceil", "Returns the smallest integer which is greater than or equal to x."));
+		m_langDefIdentifiers.push_back(std::make_pair("fract", "Returns the fractional part of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("mod", "Modulus. Returns x – y ∗ floor (x/y)."));
+		m_langDefIdentifiers.push_back(std::make_pair("modf", "Splits the value x into fractional and integer parts."));
+		m_langDefIdentifiers.push_back(std::make_pair("max", "Selects the greater of x and y."));
+		m_langDefIdentifiers.push_back(std::make_pair("min", "Selects the lesser of x and y."));
+		m_langDefIdentifiers.push_back(std::make_pair("clamp", "Clamps x to the range [min, max]."));
+		m_langDefIdentifiers.push_back(std::make_pair("mix", "Returns x*(1-a)+y*a."));
+		m_langDefIdentifiers.push_back(std::make_pair("isinf", "Returns true if x is +INF or -INF, false otherwise."));
+		m_langDefIdentifiers.push_back(std::make_pair("isnan", "Returns true if x is NAN or QNAN, false otherwise."));
+		m_langDefIdentifiers.push_back(std::make_pair("smoothstep", "Returns a smooth Hermite interpolation between 0 and 1."));
+		m_langDefIdentifiers.push_back(std::make_pair("step", "Returns (x >= a) ? 1 : 0"));
+		m_langDefIdentifiers.push_back(std::make_pair("floatBitsToInt", "Returns a signed or unsigned integer value representing the encoding of a floating-point value. The floatingpoint value's bit-level representation is preserved."));
+		m_langDefIdentifiers.push_back(std::make_pair("floatBitsToUint", "Returns a signed or unsigned integer value representing the encoding of a floating-point value. The floatingpoint value's bit-level representation is preserved."));
+		m_langDefIdentifiers.push_back(std::make_pair("intBitsToFloat", "Returns a floating-point value corresponding to a signed or unsigned integer encoding of a floating-point value."));
+		m_langDefIdentifiers.push_back(std::make_pair("uintBitsToFloat", "Returns a floating-point value corresponding to a signed or unsigned integer encoding of a floating-point value."));
+		m_langDefIdentifiers.push_back(std::make_pair("fmod", "Returns the floating point remainder of x/y."));
+		m_langDefIdentifiers.push_back(std::make_pair("fma", "Returns the double-precision fused multiply-addition of a * b + c."));
+		m_langDefIdentifiers.push_back(std::make_pair("ldexp", "Returns x * 2exp"));
+		m_langDefIdentifiers.push_back(std::make_pair("packUnorm2x16", "First, converts each component of the normalized floating - point value v into 8 or 16bit integer values. Then, the results are packed into the returned 32bit unsigned integer."));
+		m_langDefIdentifiers.push_back(std::make_pair("packUnorm4x8", "First, converts each component of the normalized floating - point value v into 8 or 16bit integer values. Then, the results are packed into the returned 32bit unsigned integer."));
+		m_langDefIdentifiers.push_back(std::make_pair("packSnorm4x8", "First, converts each component of the normalized floating - point value v into 8 or 16bit integer values. Then, the results are packed into the returned 32bit unsigned integer."));
+		m_langDefIdentifiers.push_back(std::make_pair("unpackUnorm2x16", "First, unpacks a single 32bit unsigned integer p into a pair of 16bit unsigned integers, four 8bit unsigned integers, or four 8bit signed integers.Then, each component is converted to a normalized floating point value to generate the returned two or four component vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("unpackUnorm4x8", "First, unpacks a single 32bit unsigned integer p into a pair of 16bit unsigned integers, four 8bit unsigned integers, or four 8bit signed integers.Then, each component is converted to a normalized floating point value to generate the returned two or four component vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("unpackSnorm4x8", "First, unpacks a single 32bit unsigned integer p into a pair of 16bit unsigned integers, four 8bit unsigned integers, or four 8bit signed integers.Then, each component is converted to a normalized floating point value to generate the returned two or four component vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("packDouble2x32", "Returns a double-precision value obtained by packing the components of v into a 64-bit value."));
+		m_langDefIdentifiers.push_back(std::make_pair("unpackDouble2x32", "Returns a two-component unsigned integer vector representation of v."));
+		m_langDefIdentifiers.push_back(std::make_pair("length", "Returns the length of the vector v."));
+		m_langDefIdentifiers.push_back(std::make_pair("distance", "Returns the distance between two points."));
+		m_langDefIdentifiers.push_back(std::make_pair("dot", "Returns the dot product of two vectors."));
+		m_langDefIdentifiers.push_back(std::make_pair("cross", "Returns the cross product of two 3D vectors."));
+		m_langDefIdentifiers.push_back(std::make_pair("normalize", "Returns a normalized vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("faceforward", "Returns -n * sign(dot(i, ng))."));
+		m_langDefIdentifiers.push_back(std::make_pair("reflect", "Returns a reflection vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("refract", "Returns the refraction vector."));
+		m_langDefIdentifiers.push_back(std::make_pair("matrixCompMult", "Multiply matrix x by matrix y component-wise."));
+		m_langDefIdentifiers.push_back(std::make_pair("outerProduct", "Linear algebraic matrix multiply c * r."));
+		m_langDefIdentifiers.push_back(std::make_pair("transpose", "Returns the transpose of the matrix m."));
+		m_langDefIdentifiers.push_back(std::make_pair("determinant", "Returns the determinant of the square matrix m."));
+		m_langDefIdentifiers.push_back(std::make_pair("inverse", "Returns a matrix that is the inverse of m."));
+		m_langDefIdentifiers.push_back(std::make_pair("lessThan", "Returns the component-wise compare of x < y"));
+		m_langDefIdentifiers.push_back(std::make_pair("lessThanEqual", "Returns the component-wise compare of x <= y"));
+		m_langDefIdentifiers.push_back(std::make_pair("greaterThan", "Returns the component-wise compare of x > y"));
+		m_langDefIdentifiers.push_back(std::make_pair("greaterThanEqual", "Returns the component-wise compare of x >= y"));
+		m_langDefIdentifiers.push_back(std::make_pair("equal", "Returns the component-wise compare of x == y"));
+		m_langDefIdentifiers.push_back(std::make_pair("notEqual", "Returns the component-wise compare of x != y"));
+		m_langDefIdentifiers.push_back(std::make_pair("any", "Test if any component of x is nonzero."));
+		m_langDefIdentifiers.push_back(std::make_pair("all", "Test if all components of x are nonzero."));
+		m_langDefIdentifiers.push_back(std::make_pair("not", "Returns the component-wise logical complement of x."));
+		m_langDefIdentifiers.push_back(std::make_pair("uaddCarry", "Adds 32bit unsigned integer x and y, returning the sum modulo 2^32."));
+		m_langDefIdentifiers.push_back(std::make_pair("usubBorrow", "Subtracts the 32bit unsigned integer y from x, returning the difference if non-negatice, or 2^32 plus the difference otherwise."));
+		m_langDefIdentifiers.push_back(std::make_pair("umulExtended", "Multiplies 32bit integers x and y, producing a 64bit result."));
+		m_langDefIdentifiers.push_back(std::make_pair("imulExtended", "Multiplies 32bit integers x and y, producing a 64bit result."));
+		m_langDefIdentifiers.push_back(std::make_pair("bitfieldExtract", "Extracts bits [offset, offset + bits - 1] from value, returning them in the least significant bits of the result."));
+		m_langDefIdentifiers.push_back(std::make_pair("bitfieldpush_back", "Returns the push_backion the bits leas-significant bits of push_back into base"));
+		m_langDefIdentifiers.push_back(std::make_pair("bitfieldReverse", "Returns the reversal of the bits of value."));
+		m_langDefIdentifiers.push_back(std::make_pair("bitCount", "Returns the number of bits set to 1 in the binary representation of value."));
+		m_langDefIdentifiers.push_back(std::make_pair("findLSB", "Returns the bit number of the least significant bit set to 1 in the binary representation of value."));
+		m_langDefIdentifiers.push_back(std::make_pair("findMSB", "Returns the bit number of the most significant bit in the binary representation of value."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureSize", "Returns the dimensions of level lod  (if present) for the texture bound to sample."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureQueryLod", "Returns the mipmap array(s) that would be accessed in the x component of the return value."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture", "Use the texture coordinate P to do a texture lookup in the texture currently bound to sampler."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureProj", "Do a texture lookup with projection."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureLod", "Do a texture lookup as in texture but with explicit LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureOffset", "Do a texture lookup as in texture but with offset added to the (u,v,w) texel coordinates before looking up each texel."));
+		m_langDefIdentifiers.push_back(std::make_pair("texelFetch", "Use integer texture coordinate P to lookup a single texel from sampler."));
+		m_langDefIdentifiers.push_back(std::make_pair("texelFetchOffset", "Fetch a single texel as in texelFetch offset by offset."));
+		m_langDefIdentifiers.push_back(std::make_pair("texetureProjOffset", "Do a projective texture lookup as described in textureProj offset by offset as descrived in textureOffset."));
+		m_langDefIdentifiers.push_back(std::make_pair("texetureLodOffset", "Do an offset texture lookup with explicit LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureProjLod", "Do a projective texture lookup with explicit LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureLodOffset", "Do an offset texture lookup with explicit LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureProjLodOffset", "Do an offset projective texture lookup with explicit LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureGrad", "Do a texture lookup as in texture but with explicit gradients."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureGradOffset", "Do a texture lookup with both explicit gradient and offset, as described in textureGrad and textureOffset."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureProjGrad", "Do a texture lookup both projectively and with explicit gradient."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureProjGradOffset", "Do a texture lookup both projectively and with explicit gradient as well as with offset."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureGather", "Built-in function."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureGatherOffset", "Built-in function."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureGatherOffsets", "Built-in function."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture1D", "1D texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture1DLod", "1D texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture1DProj", "1D texture lookup with projective divide."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture1DProjLod", "1D texture lookup with projective divide and with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture2D", "2D texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture2DLod", "2D texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture2DProj", "2D texture lookup with projective divide."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture2DProjLod", "2D texture lookup with projective divide and with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture3D", "3D texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture3DLod", "3D texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture3DProj", "3D texture lookup with projective divide."));
+		m_langDefIdentifiers.push_back(std::make_pair("texture3DProjLod", "3D texture lookup with projective divide and with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureCube", "Cube texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("textureCubeLod", "Cube texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow1D", "1D texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow1DLod", "1D texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow1DProj", "1D texture lookup with projective divide."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow1DProjLod", "1D texture lookup with projective divide and with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow2D", "2D texture lookup."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow2DLod", "2D texture lookup with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow2DProj", "2D texture lookup with projective divide."));
+		m_langDefIdentifiers.push_back(std::make_pair("shadow2DProjLod", "2D texture lookup with projective divide and with LOD."));
+		m_langDefIdentifiers.push_back(std::make_pair("dFdx", "Returns the partial derivative of x with respect to the screen-space x-coordinate."));
+		m_langDefIdentifiers.push_back(std::make_pair("dFdy", "Returns the partial derivative of x with respect to the screen-space y-coordinate."));
+		m_langDefIdentifiers.push_back(std::make_pair("fwidth", "Returns abs(ddx(x)) + abs(ddy(x))"));
+		m_langDefIdentifiers.push_back(std::make_pair("interpolateAtCentroid", "Return the value of the input varying interpolant sampled at a location inside the both the pixel and the primitive being processed."));
+		m_langDefIdentifiers.push_back(std::make_pair("interpolateAtSample", "Return the value of the input varying interpolant at the location of sample number sample."));
+		m_langDefIdentifiers.push_back(std::make_pair("interpolateAtOffset", "Return the value of the input varying interpolant sampled at an offset from the center of the pixel specified by offset."));
+		m_langDefIdentifiers.push_back(std::make_pair("noise1", "Generates a random value"));
+		m_langDefIdentifiers.push_back(std::make_pair("noise2", "Generates a random value"));
+		m_langDefIdentifiers.push_back(std::make_pair("noise3", "Generates a random value"));
+		m_langDefIdentifiers.push_back(std::make_pair("noise4", "Generates a random value"));
+		m_langDefIdentifiers.push_back(std::make_pair("EmitStreamVertex", "Emit the current values of output variables to the current output primitive on stream stream."));
+		m_langDefIdentifiers.push_back(std::make_pair("EndStreamPrimitive", "Completes the current output primitive on stream stream and starts a new one."));
+		m_langDefIdentifiers.push_back(std::make_pair("EmitVertex", "Emit the current values to the current output primitive."));
+		m_langDefIdentifiers.push_back(std::make_pair("EndPrimitive", "Completes the current output primitive and starts a new one."));
+		m_langDefIdentifiers.push_back(std::make_pair("barrier", "For any given static instance of barrier(), all tessellation control shader invocations for a single input patch must enter it before any will be allowed to continue beyond it."));
+	}
+	bool GodotShaders::IsOpenedInCodeEditor(const char* filename)
+	{
+		for (const auto& it : m_editorOpened)
+			if (it == filename)
+				return true;
+
+		return false;
+	}
+	void GodotShaders::SaveCodeEditorItem(const char* src, int srcLen, int sid, const char* itemType)
+	{
+		for (int i = 0; i < m_editorID.size(); i++) {
+			if (m_editorID[i] == sid) {
+				char outPath[MAX_PATH_LENGTH] = { 0 };
+				GetProjectPath(Project, m_editorOpened[i].c_str(), outPath);
+				std::ofstream out(outPath);
+				out.write(src, srcLen);
+				out.close();
+				break;
+			}
+		}
+	}
+	void GodotShaders::CloseCodeEditorItem(int sid, const char* itemType)
+	{
+		for (int i = 0; i < m_editorID.size(); i++)
+			if (m_editorID[i] == sid) {
+				m_editorID.erase(m_editorID.begin() + i);
+				m_editorOpened.erase(m_editorOpened.begin() + i);
+				break;
+			}
+	}
+	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid, const char* type, const char* path)
+	{
+		return 147; // TODO: ew
+	}
+	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid, const char* type, const char* path)
+	{
+		return SLang_Keywords;
+	}
+	int GodotShaders::GetLanguageDefinitionTokenRegexCount(int sid, const char* type, const char* path)
+	{
+		return 9; // TODO: ew
+	}
+	const char* GodotShaders::GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid, const char* type, const char* path)
+	{
+		// TODO: ew
+		switch (index) {
+		case 0:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Preprocessor;
+			return "[ \\t]*#[ \\t]*[a-zA-Z_]+";
+			break;
+		case 1:
+			palIndex = ed::plugin::TextEditorPaletteIndex::String;
+			return "L?\\\"(\\\\.|[^\\\"])*\\\"";
+			break;
+		case 2:
+			palIndex = ed::plugin::TextEditorPaletteIndex::CharLiteral;
+			return "\\'\\\\?[^\\']\\'";
+			break;
+		case 3:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
+			return "[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?";
+			break;
+		case 4:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
+			return "[+-]?[0-9]+[Uu]?[lL]?[lL]?";
+			break;
+		case 5:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
+			return "0[0-7]+[Uu]?[lL]?[lL]?";
+			break;
+		case 6:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
+			return "0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?";
+			break;
+		case 7:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Identifier;
+			return "[a-zA-Z_][a-zA-Z0-9_]*";
+			break;
+		case 8:
+			palIndex = ed::plugin::TextEditorPaletteIndex::Punctuation;
+			return "[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]";
+			break;
+		}
+
+		return "";
+	}
+	int GodotShaders::GetLanguageDefinitionIdentifierCount(int sid, const char* type, const char* path)
+	{
+		return m_langDefIdentifiers.size();
+	}
+	const char* GodotShaders::GetLanguageDefinitionIdentifier(int index, int sid, const char* type, const char* path)
+	{
+		return m_langDefIdentifiers[index].first;
+	}
+	const char* GodotShaders::GetLanguageDefinitionIdentifierDesc(int index, int sid, const char* type, const char* path)
+	{
+		return m_langDefIdentifiers[index].second;
+	}
+	const char* GodotShaders::GetLanguageDefinitionCommentStart(int sid, const char* type, const char* path)
+	{
+		return "/*";
+	}
+	const char* GodotShaders::GetLanguageDefinitionCommentEnd(int sid, const char* type, const char* path)
+	{
+		return "*/";
+	}
+	const char* GodotShaders::GetLanguageDefinitionLineComment(int sid, const char* type, const char* path)
+	{
+		return "//";
+	}
+	bool GodotShaders::IsLanguageDefinitionCaseSensitive(int sid, const char* type, const char* path) { return true; }
+	bool GodotShaders::GetLanguageDefinitionAutoIndent(int sid, const char* type, const char* path) { return true; }
+	const char* GodotShaders::GetLanguageDefinitionName(int sid, const char* type, const char* path) { return "Godot"; }
+
 	// misc
 	bool GodotShaders::HandleDropFile(const char* filename) { return false; }
-	void GodotShaders::HandleRecompile()
+	void GodotShaders::HandleRecompile(const char* itemName)
 	{
 		for (auto& item : m_items)
 		{
-			if (item->Type == PipelineItemType::CanvasMaterial) {
+			if (item->Type == PipelineItemType::CanvasMaterial &&
+				strcmp(item->Name, itemName) == 0)
+			{
 				gd::pipe::CanvasMaterial* data = (gd::pipe::CanvasMaterial*)item;
 				data->Compile();
 			}

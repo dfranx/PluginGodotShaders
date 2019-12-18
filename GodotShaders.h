@@ -98,9 +98,27 @@ namespace gd
 		virtual bool HasSectionInOptions();
 		virtual void ShowOptions();
 
+		// code editor
+		virtual bool IsOpenedInCodeEditor(const char* filename);
+		virtual void SaveCodeEditorItem(const char* src, int srcLen, int sid, const char* itemType);
+		virtual void CloseCodeEditorItem(int sid, const char* itemType);
+		virtual int GetLanguageDefinitionKeywordCount(int sid, const char* type, const char* path);
+		virtual const char** GetLanguageDefinitionKeywords(int sid, const char* type, const char* path);
+		virtual int GetLanguageDefinitionTokenRegexCount(int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid, const char* type, const char* path);
+		virtual int GetLanguageDefinitionIdentifierCount(int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionIdentifier(int index, int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionIdentifierDesc(int index, int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionCommentStart(int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionCommentEnd(int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionLineComment(int sid, const char* type, const char* path);
+		virtual bool IsLanguageDefinitionCaseSensitive(int sid, const char* type, const char* path);
+		virtual bool GetLanguageDefinitionAutoIndent(int sid, const char* type, const char* path);
+		virtual const char* GetLanguageDefinitionName(int sid, const char* type, const char* path);
+
 		// misc
 		virtual bool HandleDropFile(const char* filename);
-		virtual void HandleRecompile();
+		virtual void HandleRecompile(const char* itemName);
 		virtual int GetShaderFilePathCount();
 		virtual const char* GetShaderFilePath(int index);
 		virtual bool HasShaderFilePathChanged();
@@ -115,6 +133,12 @@ namespace gd
 		
 		bool m_createSpritePopup;
 		std::string m_createSpriteTexture;
+
+		std::vector<std::pair<const char*, const char*>> m_langDefIdentifiers;
+		void m_buildLangDefIdentifiers();
+		std::vector<std::string> m_editorOpened;
+		std::vector<int> m_editorID;
+		int m_editorCurrentID;
 
 		glm::vec2 m_rtSize, m_lastSize;
 		glm::vec4 m_clearColor;

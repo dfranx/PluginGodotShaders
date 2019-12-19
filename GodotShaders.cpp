@@ -3,6 +3,8 @@
 #include "Plugin/Sprite2D.h"
 #include "UI/UIHelper.h"
 
+#include "Plugin/ResourceManager.h"
+
 #include <utility>
 #include <fstream>
 #include <string.h>
@@ -101,7 +103,7 @@ namespace gd
 			m_createSpriteTexture = "";
 			m_createSpritePopup = false;
 		}
-		ImGui::SetNextWindowSize(ImVec2(330, 100), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(430, 270), ImGuiCond_Once);
 		if (ImGui::BeginPopupModal("Create Sprite##create_godot_sprite")) {
 			ImGui::Text("Texture: "); ImGui::SameLine();
 			if (ImGui::BeginCombo("##godot_sprite_texture", m_createSpriteTexture.empty() ? "EMPTY" : UIHelper::TrimFilename(m_createSpriteTexture).c_str())) {
@@ -120,6 +122,11 @@ namespace gd
 
 				ImGui::EndCombo();
 			}
+
+			if (m_createSpriteTexture.empty())
+				ImGui::Image((ImTextureID)(ResourceManager::Instance().EmptyTexture), ImVec2(64,64));
+			else
+				ImGui::Image((ImTextureID)GetFlippedTexture(ObjectManager, m_createSpriteTexture.c_str()), ImVec2(64, 64));
 
 			if (ImGui::Button("Ok")) {
 				m_addSprite((pipe::CanvasMaterial*)m_popupItem, m_createSpriteTexture);
@@ -572,15 +579,7 @@ namespace gd
 		m_langDefIdentifiers.push_back(std::make_pair("EndPrimitive", "Completes the current output primitive and starts a new one."));
 		m_langDefIdentifiers.push_back(std::make_pair("barrier", "For any given static instance of barrier(), all tessellation control shader invocations for a single input patch must enter it before any will be allowed to continue beyond it."));
 	}
-	bool GodotShaders::IsOpenedInCodeEditor(const char* filename)
-	{
-		for (const auto& it : m_editorOpened)
-			if (it == filename)
-				return true;
-
-		return false;
-	}
-	void GodotShaders::SaveCodeEditorItem(const char* src, int srcLen, int sid, const char* itemType)
+	void GodotShaders::SaveCodeEditorItem(const char* src, int srcLen, int sid)
 	{
 		for (int i = 0; i < m_editorID.size(); i++) {
 			if (m_editorID[i] == sid) {
@@ -593,7 +592,7 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::CloseCodeEditorItem(int sid, const char* itemType)
+	void GodotShaders::CloseCodeEditorItem(int sid)
 	{
 		for (int i = 0; i < m_editorID.size(); i++)
 			if (m_editorID[i] == sid) {
@@ -602,19 +601,19 @@ namespace gd
 				break;
 			}
 	}
-	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid, const char* type, const char* path)
+	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid)
 	{
 		return 147; // TODO: ew
 	}
-	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid, const char* type, const char* path)
+	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid)
 	{
 		return SLang_Keywords;
 	}
-	int GodotShaders::GetLanguageDefinitionTokenRegexCount(int sid, const char* type, const char* path)
+	int GodotShaders::GetLanguageDefinitionTokenRegexCount(int sid)
 	{
 		return 9; // TODO: ew
 	}
-	const char* GodotShaders::GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid)
 	{
 		// TODO: ew
 		switch (index) {
@@ -658,33 +657,33 @@ namespace gd
 
 		return "";
 	}
-	int GodotShaders::GetLanguageDefinitionIdentifierCount(int sid, const char* type, const char* path)
+	int GodotShaders::GetLanguageDefinitionIdentifierCount(int sid)
 	{
 		return m_langDefIdentifiers.size();
 	}
-	const char* GodotShaders::GetLanguageDefinitionIdentifier(int index, int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionIdentifier(int index, int sid)
 	{
 		return m_langDefIdentifiers[index].first;
 	}
-	const char* GodotShaders::GetLanguageDefinitionIdentifierDesc(int index, int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionIdentifierDesc(int index, int sid)
 	{
 		return m_langDefIdentifiers[index].second;
 	}
-	const char* GodotShaders::GetLanguageDefinitionCommentStart(int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionCommentStart(int sid)
 	{
 		return "/*";
 	}
-	const char* GodotShaders::GetLanguageDefinitionCommentEnd(int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionCommentEnd(int sid)
 	{
 		return "*/";
 	}
-	const char* GodotShaders::GetLanguageDefinitionLineComment(int sid, const char* type, const char* path)
+	const char* GodotShaders::GetLanguageDefinitionLineComment(int sid)
 	{
 		return "//";
 	}
-	bool GodotShaders::IsLanguageDefinitionCaseSensitive(int sid, const char* type, const char* path) { return true; }
-	bool GodotShaders::GetLanguageDefinitionAutoIndent(int sid, const char* type, const char* path) { return true; }
-	const char* GodotShaders::GetLanguageDefinitionName(int sid, const char* type, const char* path) { return "Godot"; }
+	bool GodotShaders::IsLanguageDefinitionCaseSensitive(int sid) { return true; }
+	bool GodotShaders::GetLanguageDefinitionAutoIndent(int sid) { return true; }
+	const char* GodotShaders::GetLanguageDefinitionName(int sid) { return "Godot"; }
 
 	// misc
 	bool GodotShaders::HandleDropFile(const char* filename) { return false; }

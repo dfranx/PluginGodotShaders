@@ -30,6 +30,7 @@ namespace gd
 		out.SCREEN_TEXTURE = false;
 		out.SCREEN_UV = false;
 		out.TIME = false;
+		out.Error = false;
 		out.LightMode = Shader::CanvasItem::LIGHT_MODE_UNSHADED;
 		out.BlendMode = Shader::CanvasItem::BLEND_MODE_MIX;
 
@@ -54,8 +55,18 @@ namespace gd
 			actions->uniforms = &out.Uniforms;
 		} // TODO: spatial
 
+		std::string errMsg = "";
+		int errLine = 0;
+
+
 		ShaderCompilerGLES3 compiler;
-		compiler.compile(VisualServer::SHADER_CANVAS_ITEM, in, actions, "shader.gds", genCode);
+		Error res = compiler.compile(VisualServer::SHADER_CANVAS_ITEM, in, actions, "shader.gds", genCode, errMsg, errLine);
+
+		if (res != OK) {
+			out.Error = true;
+			out.ErrorMessage = errMsg;
+			out.ErrorLine = errLine;
+		}
 
 
 

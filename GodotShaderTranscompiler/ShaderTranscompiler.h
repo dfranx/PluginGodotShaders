@@ -11,6 +11,10 @@ namespace gd
 		std::string Vertex;
 		std::string Fragment;
 
+		bool Error;
+		int ErrorLine;
+		std::string ErrorMessage;
+
 		bool SCREEN_UV, SCREEN_TEXTURE, TIME;
 		int BlendMode, LightMode;
 		std::unordered_map<std::string, ShaderLanguage::ShaderNode::Uniform> Uniforms;

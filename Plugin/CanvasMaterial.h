@@ -28,7 +28,7 @@ namespace gd
 		private:
 			gd::GLSLOutput m_glslData;
 
-			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc;
+			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc, m_timeLoc;
 			glm::mat4 m_projMat;
 			glm::mat4 m_modelMat;
 		};

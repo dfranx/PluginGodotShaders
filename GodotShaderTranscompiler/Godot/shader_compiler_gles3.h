@@ -95,7 +95,7 @@ private:
 	DefaultIdentifierActions actions[VS::SHADER_MAX];
 
 public:
-	Error compile(VS::ShaderMode p_mode, const std::string &p_code, IdentifierActions *p_actions, const std::string &p_path, GeneratedCode &r_gen_code);
+	Error compile(VS::ShaderMode p_mode, const std::string &p_code, IdentifierActions *p_actions, const std::string &p_path, GeneratedCode &r_gen_code, std::string& errorMsg, int& errorLine);
 
 	ShaderCompilerGLES3();
 };

@@ -61,7 +61,7 @@ namespace gd
 				ImGui::EndCombo();
 			}
 			ImGui::PopItemWidth();
-			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64), ImVec2(1,1), ImVec2(0,0));
+			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64));
 			ImGui::Separator();
 
 			ImGui::Text("Position: "); ImGui::SameLine();
@@ -85,7 +85,7 @@ namespace gd
 				m_texID = ResourceManager::Instance().EmptyTexture;
 			} else {
 				m_texName = texObjName;
-				m_texID = Owner->GetTexture(Owner->ObjectManager, texObjName.c_str());
+				m_texID = Owner->GetFlippedTexture(Owner->ObjectManager, texObjName.c_str());
 			}
 
 			// get texture size

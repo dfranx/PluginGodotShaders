@@ -99,22 +99,21 @@ namespace gd
 		virtual void ShowOptions();
 
 		// code editor
-		virtual bool IsOpenedInCodeEditor(const char* filename);
-		virtual void SaveCodeEditorItem(const char* src, int srcLen, int sid, const char* itemType);
-		virtual void CloseCodeEditorItem(int sid, const char* itemType);
-		virtual int GetLanguageDefinitionKeywordCount(int sid, const char* type, const char* path);
-		virtual const char** GetLanguageDefinitionKeywords(int sid, const char* type, const char* path);
-		virtual int GetLanguageDefinitionTokenRegexCount(int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid, const char* type, const char* path);
-		virtual int GetLanguageDefinitionIdentifierCount(int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionIdentifier(int index, int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionIdentifierDesc(int index, int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionCommentStart(int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionCommentEnd(int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionLineComment(int sid, const char* type, const char* path);
-		virtual bool IsLanguageDefinitionCaseSensitive(int sid, const char* type, const char* path);
-		virtual bool GetLanguageDefinitionAutoIndent(int sid, const char* type, const char* path);
-		virtual const char* GetLanguageDefinitionName(int sid, const char* type, const char* path);
+		virtual void SaveCodeEditorItem(const char* src, int srcLen, int sid);
+		virtual void CloseCodeEditorItem(int sid);
+		virtual int GetLanguageDefinitionKeywordCount(int sid);
+		virtual const char** GetLanguageDefinitionKeywords(int sid);
+		virtual int GetLanguageDefinitionTokenRegexCount(int sid);
+		virtual const char* GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid);
+		virtual int GetLanguageDefinitionIdentifierCount(int sid);
+		virtual const char* GetLanguageDefinitionIdentifier(int index, int sid);
+		virtual const char* GetLanguageDefinitionIdentifierDesc(int index, int sid);
+		virtual const char* GetLanguageDefinitionCommentStart(int sid);
+		virtual const char* GetLanguageDefinitionCommentEnd(int sid);
+		virtual const char* GetLanguageDefinitionLineComment(int sid);
+		virtual bool IsLanguageDefinitionCaseSensitive(int sid);
+		virtual bool GetLanguageDefinitionAutoIndent(int sid);
+		virtual const char* GetLanguageDefinitionName(int sid);
 
 		// misc
 		virtual bool HandleDropFile(const char* filename);

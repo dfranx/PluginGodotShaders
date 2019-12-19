@@ -62,6 +62,9 @@ namespace gd
 			glUseProgram(m_shader);
 
 			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_projMat));
+
+			if (m_glslData.TIME)
+				glUniform1f(m_timeLoc, Owner->GetTime());
 		}
 		void CanvasMaterial::ShowProperties()
 		{
@@ -101,7 +104,7 @@ namespace gd
 						Compile();
 					}
 					else
-						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist");
+						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist", -1);
 					((gd::GodotShaders*)Owner)->ShaderPathsUpdated = true;
 				}
 			}
@@ -121,31 +124,36 @@ namespace gd
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
 			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
 
-			const char* filedata = nullptr;
-			int filesize = 0;
+			std::string godotShaderContents = "";
 
 			if (strlen(ShaderPath) != 0) {
 				char outPath[MAX_PATH_LENGTH];
 				Owner->GetProjectPath(Owner->Project, ShaderPath, outPath);
 
-				std::string godotShaderContents = LoadFile(outPath);
-
-				filedata = godotShaderContents.c_str();
-				filesize = godotShaderContents.size();
+				godotShaderContents = LoadFile(outPath);
 			}
+
+			const char* filedata = godotShaderContents.c_str();
+			int filesize = godotShaderContents.size();
 
 			CompileFromSource(filedata, filesize);
 		}
 		void CanvasMaterial::CompileFromSource(const char* filedata, int filesize)
 		{
+			Owner->ClearMessageGroup(Owner->Messages, Name);
+
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
 			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
 
 			if (filesize != 0 && filedata != nullptr) {
 				gd::ShaderTranscompiler::Transcompile(filedata, m_glslData);
 
-				vsCodeContent = m_glslData.Vertex;
-				psCodeContent = m_glslData.Fragment;
+				if (!m_glslData.Error) {
+					vsCodeContent = m_glslData.Vertex;
+					psCodeContent = m_glslData.Fragment;
+				} else {
+					Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, m_glslData.ErrorMessage.c_str(), m_glslData.ErrorLine);
+				}
 			}
 
 			const char* vsCode = vsCodeContent.c_str();
@@ -196,6 +204,7 @@ namespace gd
 
 			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
 			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");
+			m_timeLoc = glGetUniformLocation(m_shader, "time");
 
 			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
 		}

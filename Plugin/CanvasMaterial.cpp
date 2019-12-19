@@ -121,12 +121,28 @@ namespace gd
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
 			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
 
+			const char* filedata = nullptr;
+			int filesize = 0;
+
 			if (strlen(ShaderPath) != 0) {
 				char outPath[MAX_PATH_LENGTH];
 				Owner->GetProjectPath(Owner->Project, ShaderPath, outPath);
 
 				std::string godotShaderContents = LoadFile(outPath);
-				gd::ShaderTranscompiler::Transcompile(godotShaderContents, m_glslData);
+
+				filedata = godotShaderContents.c_str();
+				filesize = godotShaderContents.size();
+			}
+
+			CompileFromSource(filedata, filesize);
+		}
+		void CanvasMaterial::CompileFromSource(const char* filedata, int filesize)
+		{
+			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
+			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
+
+			if (filesize != 0 && filedata != nullptr) {
+				gd::ShaderTranscompiler::Transcompile(filedata, m_glslData);
 
 				vsCodeContent = m_glslData.Vertex;
 				psCodeContent = m_glslData.Fragment;

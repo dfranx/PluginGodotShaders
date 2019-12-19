@@ -21,6 +21,7 @@ namespace gd
 			void Bind();
 			void ShowProperties();
 			void Compile();
+			void CompileFromSource(const char* filedata, int filesize);
 
 			void SetModelMatrix(glm::mat4 mat);
 

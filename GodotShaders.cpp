@@ -700,6 +700,18 @@ namespace gd
 			}
 		}
 	}
+	void GodotShaders::HandleRecompileFromSource(const char* itemName, int sid, const char* shaderCode, int shaderSize)
+	{
+		for (auto& item : m_items)
+		{
+			if (item->Type == PipelineItemType::CanvasMaterial &&
+				strcmp(item->Name, itemName) == 0)
+			{
+				gd::pipe::CanvasMaterial* data = (gd::pipe::CanvasMaterial*)item;
+				data->CompileFromSource(shaderCode, shaderSize);
+			}
+		}
+	}
 	int GodotShaders::GetShaderFilePathCount()
 	{
 		return m_items.size();

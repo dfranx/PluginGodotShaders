@@ -119,6 +119,7 @@ namespace gd
 		// misc
 		virtual bool HandleDropFile(const char* filename);
 		virtual void HandleRecompile(const char* itemName);
+		virtual void HandleRecompileFromSource(const char* itemName, int sid, const char* shaderCode, int shaderSize);
 		virtual int GetShaderFilePathCount();
 		virtual const char* GetShaderFilePath(int index);
 		virtual bool HasShaderFilePathChanged();

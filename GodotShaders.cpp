@@ -6,10 +6,13 @@
 #include "Plugin/ResourceManager.h"
 
 #include <utility>
+#include <sstream>
 #include <fstream>
 #include <string.h>
 #include <glm/gtc/type_ptr.hpp>
 #include "imgui/imgui.h"
+#include "pugixml/src/pugixml.hpp"
+#include "ghc/filesystem.hpp"
 
 
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
@@ -28,6 +31,13 @@ static const char* SLang_Keywords[] = {
 
 namespace gd
 {
+	std::string toGenericPath(const std::string& p)
+	{
+		std::string ret = p;
+		std::replace(ret.begin(), ret.end(), '\\', '/');
+		return ret;
+	}
+
 	void GodotShaders::m_addCanvasMaterial()
 	{
 		// initialize the data
@@ -86,6 +96,7 @@ namespace gd
 		m_fbo = 0;
 		m_lastSize = glm::vec2(1, 1);
 		ShaderPathsUpdated = false;
+		m_varManagerOpened = false;
 		m_editorCurrentID = 0;
 		m_buildLangDefIdentifiers();
 
@@ -95,6 +106,21 @@ namespace gd
 	void GodotShaders::Update(float delta)
 	{
 		// TODO: check every 500ms if ShaderPass is used -> push an error message if yes
+
+
+		// ##### UNIFORM MANAGER POPUP #####
+		if (m_varManagerOpened) {
+			ImGui::OpenPopup("Uniforms##gshader_uniforms");
+			m_varManagerOpened = false;
+		}
+		ImGui::SetNextWindowSize(ImVec2(430, 270), ImGuiCond_Once);
+		if (ImGui::BeginPopupModal("Uniforms##gshader_uniforms")) {
+			ImGui::Text("Test!");
+			((pipe::CanvasMaterial*)m_popupItem)->ShowVariableEditor();
+			if (ImGui::Button("Ok"))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
 
 
 		// ##### CREATE SPRITE POPUP #####
@@ -181,7 +207,57 @@ namespace gd
 	{
 	}
 
-	void GodotShaders::CopyFilesOnSave(const char* dir) { } // TODO: copy all the .shader files
+	void GodotShaders::BeginProjectLoading()
+	{
+		m_loadTextures.clear();
+		m_loadSizes.clear();
+	}
+	void GodotShaders::EndProjectLoading()
+	{
+		for (auto& k : m_loadTextures)
+			k.first->SetTexture(k.second);
+		for (auto& k : m_loadSizes)
+			k.first->SetSize(k.second);
+
+
+		for (auto& owner : m_items) {
+			if (owner->Type == PipelineItemType::CanvasMaterial) {
+				pipe::CanvasMaterial* canv = (pipe::CanvasMaterial*)owner;
+				canv->SetViewportSize(m_rtSize.x, m_rtSize.y);
+				canv->Compile();
+			}
+		}
+	}
+	void GodotShaders::BeginProjectSaving()
+	{
+		m_saveRequestedCopy = false;
+	}
+	void GodotShaders::EndProjectSaving()
+	{
+
+	}
+	void GodotShaders::CopyFilesOnSave(const char* dir)
+	{
+		m_saveRequestedCopy = true;
+
+		std::string ppath = std::string(dir) + "/shaders/";
+		printf("[GSHADERS] Copying to %s\n", ppath.c_str());
+
+
+		if (!ghc::filesystem::exists(ppath))
+			ghc::filesystem::create_directories(ppath);
+
+		char sPath[MAX_PATH_LENGTH];
+		std::error_code errc;
+
+		for (auto& item : m_items) {
+			if (item->Type == PipelineItemType::CanvasMaterial) {
+				pipe::CanvasMaterial* data = (pipe::CanvasMaterial*)item;
+				GetProjectPath(Project, data->ShaderPath, sPath);
+				ghc::filesystem::copy_file(sPath, ppath + std::string(item->Name) + ".shader", ghc::filesystem::copy_options::overwrite_existing, errc);
+			}
+		}
+	}
 	bool GodotShaders::HasCustomMenu() { return false; }
 
 	bool GodotShaders::HasMenuItems(const char* name) { return false; }
@@ -279,7 +355,15 @@ namespace gd
 	}
 	void GodotShaders::OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data)
 	{
-		printf("Tried to open %s's shader.", type);
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)data;
+			OpenInCodeEditor(CodeEditor, GetPipelineItem(PipelineManager, mat->Name), mat->ShaderPath, m_editorCurrentID);
+			m_editorID.push_back(m_editorCurrentID);
+			m_editorOpened.push_back(mat->ShaderPath);
+			m_editorCurrentID++;
+
+			printf("[GSHADERS] Opened %s's shader.\n", mat->Name);
+		}
 	}
 	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType)
 	{
@@ -422,10 +506,94 @@ namespace gd
 				pipe::CanvasMaterial* idata = (pipe::CanvasMaterial*)data;
 				idata->Compile();
 			}
+			if (ImGui::Selectable("Uniforms"))
+			{
+				m_varManagerOpened = true;
+				m_varManagerItem = (PipelineItem*)data;
+			}
 		}
 	}
-	const char* GodotShaders::ExportPipelineItem(const char* type, void* data) { return nullptr; }
-	void* GodotShaders::ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString) { return nullptr; }
+	const char* GodotShaders::ExportPipelineItem(const char* type, void* data)
+	{
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)data;
+			
+			pugi::xml_document doc;
+
+			std::string actualPath = mat->ShaderPath;
+			if (m_saveRequestedCopy) {
+				actualPath = std::string(GetProjectDirectory(Project)) + "/shaders/" + std::string(mat->Name) + ".shader";
+				char outPath[MAX_PATH_LENGTH] = { 0 };
+				GetRelativePath(Project, actualPath.c_str(), outPath);
+				actualPath = outPath;
+			}
+
+			doc.append_child("path").text().set(actualPath.c_str());
+			
+			std::ostringstream oss;
+			doc.print(oss);
+			m_tempXML = oss.str();
+
+			return m_tempXML.c_str();
+		}
+		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
+			pipe::Sprite2D* spr = (pipe::Sprite2D*)data;
+
+			pugi::xml_document doc;
+			doc.append_child("texture").text().set(spr->GetTexture().c_str());
+			doc.append_child("width").text().set(spr->GetSize().x);
+			doc.append_child("height").text().set(spr->GetSize().y);
+			doc.append_child("x").text().set(spr->GetPosition().x);
+			doc.append_child("y").text().set(spr->GetPosition().y);
+
+			std::ostringstream oss;
+			doc.print(oss);
+			m_tempXML = oss.str();
+
+			return m_tempXML.c_str();
+		}
+
+		return nullptr;
+	}
+	void* GodotShaders::ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString)
+	{
+		pugi::xml_document doc;
+		doc.load_string(argsString);
+
+		PipelineItem* item = nullptr;
+
+		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			item = new pipe::CanvasMaterial();
+			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)item;
+
+			strcpy(mat->ShaderPath, doc.child("path").text().as_string());
+			
+			printf("[GSHADERS] Loading CanvasMaterial\n");
+		}
+		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
+			item = new pipe::Sprite2D();
+			pipe::Sprite2D* spr = (pipe::Sprite2D*)item;
+
+			float w = doc.child("width").text().as_float();
+			float h = doc.child("height").text().as_float();
+			float x = doc.child("x").text().as_float();
+			float y = doc.child("y").text().as_float();
+
+			spr->SetPosition(glm::vec2(x, y));
+
+			m_loadSizes[spr] = glm::vec2(w, h);
+			m_loadTextures[spr] = toGenericPath(doc.child("texture").text().as_string());
+		}
+
+		strcpy(item->Name, name);
+		item->Items.clear();
+		item->Owner = this;
+
+		if (ownerName == nullptr)
+			m_items.push_back(item);
+
+		return (void*)item;
+	}
 
 	// options
 	bool GodotShaders::HasSectionInOptions() { return false; }

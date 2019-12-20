@@ -33,6 +33,7 @@ namespace gd
 		out.Error = false;
 		out.LightMode = Shader::CanvasItem::LIGHT_MODE_UNSHADED;
 		out.BlendMode = Shader::CanvasItem::BLEND_MODE_MIX;
+		out.Uniforms.clear();
 
 		if (shaderType == VisualServer::SHADER_CANVAS_ITEM) {
 			actions_canvas.render_mode_values["blend_add"] = std::pair<int*, int>(&out.BlendMode, Shader::CanvasItem::BLEND_MODE_ADD);

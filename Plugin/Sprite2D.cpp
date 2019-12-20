@@ -45,16 +45,20 @@ namespace gd
 			ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
 			if (ImGui::BeginCombo("##godot_sprite_texture", m_texName.empty() ? "EMPTY" : UIHelper::TrimFilename(m_texName).c_str())) {
-				if (ImGui::Selectable("EMPTY"))
+				if (ImGui::Selectable("EMPTY")) {
 					SetTexture("");
+					Owner->ModifyProject(Owner->Project);
+				}
 
 				int ocnt = Owner->GetObjectCount(Owner->ObjectManager);
 				for (int i = 0; i < ocnt; i++) {
 					const char* oname = Owner->GetObjectName(Owner->ObjectManager, i);
 					if (Owner->IsTexture(Owner->ObjectManager, oname)) {
 						unsigned int texID = Owner->GetTexture(Owner->ObjectManager, oname);
-						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str()))
+						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str())) {
 							SetTexture(oname);
+							Owner->ModifyProject(Owner->Project);
+						}
 					}
 				}
 
@@ -66,14 +70,18 @@ namespace gd
 
 			ImGui::Text("Position: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
-			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos)))
+			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos))) {
 				m_buildMatrix();
+				Owner->ModifyProject(Owner->Project);
+			}
 			ImGui::PopItemWidth(); ImGui::Separator();
 
 			ImGui::Text("Size: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
-			if (ImGui::DragFloat2("##gsprite_props_size", glm::value_ptr(m_size)))
+			if (ImGui::DragFloat2("##gsprite_props_size", glm::value_ptr(m_size))) {
 				m_buildMatrix();
+				Owner->ModifyProject(Owner->Project);
+			}
 			ImGui::PopItemWidth(); ImGui::Separator();
 		}
 
@@ -87,6 +95,8 @@ namespace gd
 				m_texName = texObjName;
 				m_texID = Owner->GetFlippedTexture(Owner->ObjectManager, texObjName.c_str());
 			}
+
+			printf("[GSHADERS] Setting texture to %s\n", texObjName.c_str());
 
 			// get texture size
 			int w, h;

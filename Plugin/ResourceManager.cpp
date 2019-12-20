@@ -15,6 +15,7 @@ namespace gd
 	ResourceManager::ResourceManager()
 	{
 		EmptyTexture = 0;
+		CopiedScreenTexture = false;
 		m_createEmptyTexture();
 
 		// default canvas item vertex shader

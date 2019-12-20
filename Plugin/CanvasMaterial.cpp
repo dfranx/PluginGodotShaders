@@ -65,6 +65,36 @@ namespace gd
 
 			if (m_glslData.TIME)
 				glUniform1f(m_timeLoc, Owner->GetTime());
+
+			for (const auto& uniform : m_uniforms) {
+				const auto& val = uniform.second.Value;
+				const auto& loc = uniform.second.Location;
+				switch (uniform.second.Type) {
+				case ShaderLanguage::TYPE_BOOL: glUniform1i(loc, val[0].sint); break;
+				case ShaderLanguage::TYPE_BVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
+				case ShaderLanguage::TYPE_BVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
+				case ShaderLanguage::TYPE_BVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
+				case ShaderLanguage::TYPE_INT: glUniform1i(loc, val[0].sint); break;
+				case ShaderLanguage::TYPE_IVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
+				case ShaderLanguage::TYPE_IVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
+				case ShaderLanguage::TYPE_IVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
+				case ShaderLanguage::TYPE_UINT: glUniform1ui(loc, val[0].uint); break;
+				case ShaderLanguage::TYPE_UVEC2: glUniform2ui(loc, val[0].uint, val[1].uint); break;
+				case ShaderLanguage::TYPE_UVEC3: glUniform3ui(loc, val[0].uint, val[1].uint, val[2].uint); break;
+				case ShaderLanguage::TYPE_UVEC4: glUniform4ui(loc, val[0].uint, val[1].uint, val[2].uint, val[3].uint); break;
+				case ShaderLanguage::TYPE_FLOAT: glUniform1f(loc, val[0].real); break;
+				case ShaderLanguage::TYPE_VEC2: glUniform2f(loc, val[0].real, val[1].real); break;
+				case ShaderLanguage::TYPE_VEC3: glUniform3f(loc, val[0].real, val[1].real, val[2].real); break;
+				case ShaderLanguage::TYPE_VEC4: glUniform4f(loc, val[0].real, val[1].real, val[2].real, val[3].real); break;
+				case ShaderLanguage::TYPE_MAT2: glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_MAT3: glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_MAT4: glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_SAMPLER2D: 
+					glActiveTexture(GL_TEXTURE0 + loc);
+					glBindTexture(GL_TEXTURE_2D, val[0].uint);
+					break;
+				}
+			}
 		}
 		void CanvasMaterial::ShowProperties()
 		{
@@ -113,6 +143,10 @@ namespace gd
 
 			ImGui::Columns(1);
 		}
+		void CanvasMaterial::ShowVariableEditor()
+		{
+
+		}
 
 		void CanvasMaterial::SetModelMatrix(glm::mat4 mat)
 		{
@@ -140,6 +174,7 @@ namespace gd
 		}
 		void CanvasMaterial::CompileFromSource(const char* filedata, int filesize)
 		{
+			m_uniforms.clear();
 			Owner->ClearMessageGroup(Owner->Messages, Name);
 
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
@@ -207,6 +242,20 @@ namespace gd
 			m_timeLoc = glGetUniformLocation(m_shader, "time");
 
 			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
+			
+			// user uniforms
+			for (const auto& uniform : m_glslData.Uniforms) {
+				m_uniforms[uniform.first].Location = glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str());
+
+				m_uniforms[uniform.first].Type = uniform.second.type;
+				m_uniforms[uniform.first].Value = uniform.second.default_value;
+
+				if (uniform.second.default_value.size() == 0) {
+					m_uniforms[uniform.first].Value.resize(ShaderLanguage::get_cardinality(uniform.second.type));
+					for (auto& val : m_uniforms[uniform.first].Value)
+						val.sint = 0;
+				}
+			}
 		}
 	}
 }

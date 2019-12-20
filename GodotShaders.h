@@ -1,5 +1,6 @@
 #pragma once
 #include "PluginAPI/Plugin.h"
+#include "Plugin/Sprite2D.h"
 #include "Plugin/PipelineItem.h"
 #include "Plugin/CanvasMaterial.h"
 
@@ -27,6 +28,10 @@ namespace gd
 		virtual void BeginRender();
 		virtual void EndRender();
 
+		virtual void BeginProjectLoading();
+		virtual void EndProjectLoading();
+		virtual void BeginProjectSaving();
+		virtual void EndProjectSaving();
 		virtual void CopyFilesOnSave(const char* dir);
 		virtual bool HasCustomMenu();
 
@@ -130,6 +135,9 @@ namespace gd
 	private:
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
+
+		bool m_varManagerOpened;
+		PipelineItem* m_varManagerItem;
 		
 		bool m_createSpritePopup;
 		std::string m_createSpriteTexture;
@@ -145,6 +153,12 @@ namespace gd
 		GLuint m_fbo;
 
 		PipelineItem* m_popupItem;
+		
+		std::string m_tempXML;
+		std::unordered_map<pipe::Sprite2D*, std::string> m_loadTextures;
+		std::unordered_map<pipe::Sprite2D*, glm::vec2> m_loadSizes;
+
+		bool m_saveRequestedCopy;
 
 		std::vector<gd::PipelineItem*> m_items;
 	};

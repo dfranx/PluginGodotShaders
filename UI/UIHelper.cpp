@@ -52,7 +52,7 @@ namespace gd
 		return false;
 	}
 
-	bool UIHelper::ShowValueEditor(const std::string& name, ShaderLanguage::DataType type, std::vector<ShaderLanguage::ConstantNode::Value>& value)
+	bool UIHelper::ShowValueEditor(const std::string& name, ShaderLanguage::DataType type, std::vector<ShaderLanguage::ConstantNode::Value>& value, ShaderLanguage::ShaderNode::Uniform::Hint hint, float hint_range[3])
 	{
 		bool ret = false;
 		switch (type)
@@ -78,7 +78,7 @@ namespace gd
 			break;
 
 		case ShaderLanguage::TYPE_INT:
-			ret = ImGui::DragInt(("##gsh_int0_" + name).c_str(), &value[0].sint) || ret;
+			ret = ImGui::DragInt(("##gsh_int0_" + name).c_str(), &value[0].sint, hint_range[2], hint_range[0], hint_range[1]) || ret;
 			break;
 		case ShaderLanguage::TYPE_IVEC2:
 			ret = ImGui::DragInt2(("##gsh_int2_" + name).c_str(), &value[0].sint) || ret;
@@ -102,7 +102,7 @@ namespace gd
 			ret = ImGui::DragScalarN(("##gsh_uint4_" + name).c_str(), ImGuiDataType_U32, (void*)&value[0].uint, 4, 1.0f) || ret;
 			break;
 		case ShaderLanguage::TYPE_FLOAT:
-			ret = ImGui::DragFloat(("##gsh_float1_" + name).c_str(), &value[0].real, 0.01f) || ret;
+			ret = ImGui::DragFloat(("##gsh_float1_" + name).c_str(), &value[0].real, hint_range[2], hint_range[0], hint_range[1]) || ret;
 			break;
 		case ShaderLanguage::TYPE_VEC2:
 			ret = ImGui::DragFloat2(("##gsh_float2_" + name).c_str(), &value[0].real, 0.01f) || ret;
@@ -111,7 +111,9 @@ namespace gd
 			ret = ImGui::DragFloat3(("##gsh_float3_" + name).c_str(), &value[0].real, 0.01f) || ret;
 			break;
 		case ShaderLanguage::TYPE_VEC4:
-			ret = ImGui::DragFloat4(("##gsh_float4_" + name).c_str(), &value[0].real, 0.01f) || ret;
+			if (hint == ShaderLanguage::ShaderNode::Uniform::HINT_COLOR)
+				ret = ImGui::ColorEdit4("##gsh_color", &value[0].real) || ret;
+			else ret = ImGui::DragFloat4(("##gsh_float4_" + name).c_str(), &value[0].real, 0.01f) || ret;
 			break;
 		case ShaderLanguage::TYPE_MAT2:
 			ret = ImGui::DragFloat2(("##gsh_mat2_0" + name).c_str(), &value[0].real, 0.01f) || ret;

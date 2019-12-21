@@ -154,7 +154,7 @@ namespace gd
 				ImGui::SetColumnWidth(1, 75.0f);
 				firstTime = false;
 			}
-
+			
 			ImGui::Separator();
 			for (auto& u : m_uniforms) {
 				ImGui::Text("%s", u.first.c_str());
@@ -163,7 +163,7 @@ namespace gd
 				ImGui::Text("%s", ShaderLanguage::get_datatype_name(u.second.Type).c_str());
 				ImGui::NextColumn();
 
-				if (UIHelper::ShowValueEditor(u.first, u.second.Type, u.second.Value))
+				if (UIHelper::ShowValueEditor(u.first, u.second.Type, u.second.Value, u.second.HintType, u.second.HintRange))
 					Owner->ModifyProject(Owner->Project);
 				ImGui::NextColumn();
 				ImGui::Separator();
@@ -300,6 +300,15 @@ namespace gd
 
 				if (u->Value.size() == 0 || equal)
 					u->Value = uniform.second.default_value;
+
+				memcpy(&u->HintRange[0], (void*)&uniform.second.hint_range[0], 3 * sizeof(float));
+				u->HintType = uniform.second.hint;
+
+				if (u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_NONE) {
+					u->HintRange[0] = 0.0f;
+					u->HintRange[1] = 0.0f;
+					u->HintRange[2] = scalarType == ShaderLanguage::DataType::TYPE_FLOAT ? 0.01f : 1.0f;
+				}
 			}
 		}
 	}

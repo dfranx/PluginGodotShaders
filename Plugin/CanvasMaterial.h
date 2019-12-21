@@ -31,6 +31,11 @@ namespace gd
 				unsigned int Location;
 				ShaderLanguage::DataType Type;
 				std::vector<ShaderLanguage::ConstantNode::Value> Value;
+
+
+				ShaderLanguage::ShaderNode::Uniform::Hint HintType;
+				float HintRange[3];
+
 			};
 
 			inline const std::unordered_map<std::string, Uniform>& GetUniforms() { return m_uniforms; }

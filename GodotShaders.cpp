@@ -37,6 +37,43 @@ namespace gd
 		std::replace(ret.begin(), ret.end(), '\\', '/');
 		return ret;
 	}
+	ShaderLanguage::DataType toDataType(const std::string& name)
+	{
+		static std::unordered_map<std::string, ShaderLanguage::DataType> ret = {
+			{ "void", ShaderLanguage::TYPE_VOID },
+			{ "bool", ShaderLanguage::TYPE_BOOL },
+			{ "bvec2", ShaderLanguage::TYPE_BVEC2 },
+			{ "bvec3", ShaderLanguage::TYPE_BVEC3 },
+			{ "bvec4", ShaderLanguage::TYPE_BVEC4 },
+			{ "int", ShaderLanguage::TYPE_INT },
+			{ "ivec2", ShaderLanguage::TYPE_IVEC2 },
+			{ "ivec3", ShaderLanguage::TYPE_IVEC3 },
+			{ "ivec4", ShaderLanguage::TYPE_IVEC4 },
+			{ "uint", ShaderLanguage::TYPE_UINT },
+			{ "uvec2", ShaderLanguage::TYPE_UVEC2 },
+			{ "uvec3", ShaderLanguage::TYPE_UVEC3 },
+			{ "uvec4", ShaderLanguage::TYPE_UVEC4 },
+			{ "float", ShaderLanguage::TYPE_FLOAT },
+			{ "vec2", ShaderLanguage::TYPE_VEC2 },
+			{ "vec3", ShaderLanguage::TYPE_VEC3 },
+			{ "vec4", ShaderLanguage::TYPE_VEC4 },
+			{ "mat2", ShaderLanguage::TYPE_MAT2 },
+			{ "mat3", ShaderLanguage::TYPE_MAT3 },
+			{ "mat4", ShaderLanguage::TYPE_MAT4 },
+			{ "sampler2D", ShaderLanguage::TYPE_SAMPLER2D },
+			{ "isampler2D", ShaderLanguage::TYPE_ISAMPLER2D },
+			{ "usampler2D", ShaderLanguage::TYPE_USAMPLER2D },
+			{ "sampler2DArray", ShaderLanguage::TYPE_SAMPLER2DARRAY },
+			{ "isampler2DArray", ShaderLanguage::TYPE_ISAMPLER2DARRAY },
+			{ "usampler2DArray", ShaderLanguage::TYPE_USAMPLER2DARRAY },
+			{ "sampler3D", ShaderLanguage::TYPE_SAMPLER3D },
+			{ "isampler3D", ShaderLanguage::TYPE_ISAMPLER3D },
+			{ "usampler3D", ShaderLanguage::TYPE_USAMPLER3D },
+			{ "samplerCube", ShaderLanguage::TYPE_SAMPLERCUBE },
+		};
+
+		return ret.count(name)>0 ? ret[name] : ShaderLanguage::TYPE_VOID;
+	}
 
 	void GodotShaders::m_addCanvasMaterial()
 	{
@@ -113,9 +150,9 @@ namespace gd
 			ImGui::OpenPopup("Uniforms##gshader_uniforms");
 			m_varManagerOpened = false;
 		}
-		ImGui::SetNextWindowSize(ImVec2(430, 270), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(700, 200), ImGuiCond_Once);
 		if (ImGui::BeginPopupModal("Uniforms##gshader_uniforms")) {
-			ImGui::Text("Test!");
+			ImGui::Text("List of all uniforms:");
 			((pipe::CanvasMaterial*)m_popupItem)->ShowVariableEditor();
 			if (ImGui::Button("Ok"))
 				ImGui::CloseCurrentPopup();
@@ -509,7 +546,7 @@ namespace gd
 			if (ImGui::Selectable("Uniforms"))
 			{
 				m_varManagerOpened = true;
-				m_varManagerItem = (PipelineItem*)data;
+				m_popupItem = (PipelineItem*)data;
 			}
 		}
 	}
@@ -529,6 +566,28 @@ namespace gd
 			}
 
 			doc.append_child("path").text().set(actualPath.c_str());
+
+			pugi::xml_node uniformsNode = doc.append_child("uniforms");
+
+			const auto& uniforms = mat->GetUniforms();
+			for (const auto& u : uniforms) {
+				pugi::xml_node uniformNode = uniformsNode.append_child("uniform");
+				uniformNode.append_attribute("name").set_value(u.first.c_str());
+				uniformNode.append_attribute("type").set_value(ShaderLanguage::get_datatype_name(u.second.Type).c_str());
+				
+				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(u.second.Type);
+				for (const auto& val : u.second.Value)
+				{
+					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
+						uniformNode.append_child("value").text().set(val.boolean);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
+						uniformNode.append_child("value").text().set(val.sint);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
+						uniformNode.append_child("value").text().set(val.uint);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
+						uniformNode.append_child("value").text().set(val.real);
+				}
+			}
 			
 			std::ostringstream oss;
 			doc.print(oss);
@@ -567,6 +626,30 @@ namespace gd
 			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)item;
 
 			strcpy(mat->ShaderPath, doc.child("path").text().as_string());
+
+			for (const auto& unode : doc.child("uniforms").children("uniform")) {
+				std::string uname(unode.attribute("name").as_string());
+				ShaderLanguage::DataType utype = toDataType(unode.attribute("type").as_string());
+				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(utype);
+
+				std::vector<ShaderLanguage::ConstantNode::Value> value;
+				for (const auto& vnode : unode.children("value"))
+				{
+					ShaderLanguage::ConstantNode::Value aval;
+					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
+						aval.boolean = vnode.text().as_bool();
+					else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
+						aval.sint = vnode.text().as_int();
+					else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
+						aval.uint = vnode.text().as_uint();
+					else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
+						aval.real = vnode.text().as_float();
+					value.push_back(aval);
+				}
+
+				mat->SetUniform(uname, value);
+			}
+
 			
 			printf("[GSHADERS] Loading CanvasMaterial\n");
 		}

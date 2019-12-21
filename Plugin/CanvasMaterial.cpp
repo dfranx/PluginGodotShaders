@@ -46,6 +46,7 @@ namespace gd
 			memset(ShaderPath, 0, sizeof(char) * MAX_PATH_LENGTH);
 			m_shader = 0;
 			m_modelMat = m_projMat = glm::mat4(1.0f);
+			m_uniforms.clear();
 		}
 		CanvasMaterial::~CanvasMaterial()
 		{
@@ -145,7 +146,30 @@ namespace gd
 		}
 		void CanvasMaterial::ShowVariableEditor()
 		{
+			ImGui::Columns(3);
+			
+			static bool firstTime = true;
+			if (firstTime) {
+				ImGui::SetColumnWidth(0, 150.0f);
+				ImGui::SetColumnWidth(1, 75.0f);
+				firstTime = false;
+			}
 
+			ImGui::Separator();
+			for (auto& u : m_uniforms) {
+				ImGui::Text("%s", u.first.c_str());
+				ImGui::NextColumn();
+
+				ImGui::Text("%s", ShaderLanguage::get_datatype_name(u.second.Type).c_str());
+				ImGui::NextColumn();
+
+				if (UIHelper::ShowValueEditor(u.first, u.second.Type, u.second.Value))
+					Owner->ModifyProject(Owner->Project);
+				ImGui::NextColumn();
+				ImGui::Separator();
+			}
+
+			ImGui::Columns(1);
 		}
 
 		void CanvasMaterial::SetModelMatrix(glm::mat4 mat)
@@ -174,11 +198,12 @@ namespace gd
 		}
 		void CanvasMaterial::CompileFromSource(const char* filedata, int filesize)
 		{
-			m_uniforms.clear();
 			Owner->ClearMessageGroup(Owner->Messages, Name);
 
 			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
 			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
+
+			auto unif = m_glslData.Uniforms;
 
 			if (filesize != 0 && filedata != nullptr) {
 				gd::ShaderTranscompiler::Transcompile(filedata, m_glslData);
@@ -245,16 +270,36 @@ namespace gd
 			
 			// user uniforms
 			for (const auto& uniform : m_glslData.Uniforms) {
-				m_uniforms[uniform.first].Location = glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str());
+				Uniform* u = &m_uniforms[uniform.first];
 
-				m_uniforms[uniform.first].Type = uniform.second.type;
-				m_uniforms[uniform.first].Value = uniform.second.default_value;
+				u->Location = glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str());
+
+				if (u->Type != uniform.second.type && u->Type != ShaderLanguage::TYPE_VOID)
+					u->Value.resize(0);
+
+				u->Type = uniform.second.type;
 
 				if (uniform.second.default_value.size() == 0) {
-					m_uniforms[uniform.first].Value.resize(ShaderLanguage::get_cardinality(uniform.second.type));
-					for (auto& val : m_uniforms[uniform.first].Value)
+					u->Value.resize(ShaderLanguage::get_cardinality(uniform.second.type));
+					for (auto& val : u->Value)
 						val.sint = 0;
 				}
+
+				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(u->Type);
+				bool equal = u->Value.size() == unif[uniform.first].default_value.size();
+				for (int i = 0; i < u->Value.size() && equal; i++) {
+					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
+						equal = (u->Value[i].boolean == unif[uniform.first].default_value[i].boolean);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
+						equal = (u->Value[i].real == unif[uniform.first].default_value[i].real);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
+						equal = (u->Value[i].sint == unif[uniform.first].default_value[i].sint);
+					else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
+						equal = (u->Value[i].uint == unif[uniform.first].default_value[i].uint);
+				}
+
+				if (u->Value.size() == 0 || equal)
+					u->Value = uniform.second.default_value;
 			}
 		}
 	}

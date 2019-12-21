@@ -1,6 +1,7 @@
 #include "UIHelper.h"
 
 #include <clocale>
+#include "../Plugin/ResourceManager.h"
 #include "../nativefiledialog/nfd.h"
 #include "../imgui/imgui.h"
 
@@ -52,7 +53,7 @@ namespace gd
 		return false;
 	}
 
-	bool UIHelper::ShowValueEditor(const std::string& name, ShaderLanguage::DataType type, std::vector<ShaderLanguage::ConstantNode::Value>& value, ShaderLanguage::ShaderNode::Uniform::Hint hint, float hint_range[3])
+	bool UIHelper::ShowValueEditor(ed::IPlugin* owner, const std::string& name, ShaderLanguage::DataType type, std::vector<ShaderLanguage::ConstantNode::Value>& value, ShaderLanguage::ShaderNode::Uniform::Hint hint, float hint_range[3])
 	{
 		bool ret = false;
 		switch (type)
@@ -130,8 +131,52 @@ namespace gd
 			ret = ImGui::DragFloat4(("##gsh_mat4_2" + name).c_str(), &value[8].real, 0.01f) || ret;
 			ret = ImGui::DragFloat4(("##gsh_mat4_3" + name).c_str(), &value[12].real, 0.01f) || ret;
 			break;
+		case ShaderLanguage::TYPE_ISAMPLER2D:
+		case ShaderLanguage::TYPE_USAMPLER2D:
 		case ShaderLanguage::TYPE_SAMPLER2D:
-			// TODO: texture dropdown
+			bool isHint = hint != ShaderLanguage::ShaderNode::Uniform::HINT_NONE;
+			bool isHintValue = false;
+			if (value[0].uint == ResourceManager::Instance().BlackTexture ||
+				value[0].uint == ResourceManager::Instance().WhiteTexture)
+				isHintValue = true;
+
+			std::string filename = "";
+			int ocnt = owner->GetObjectCount(owner->ObjectManager);
+			if (!isHintValue) {
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = owner->GetObjectName(owner->ObjectManager, i);
+					if (owner->IsTexture(owner->ObjectManager, oname)) {
+						if (value[0].uint == owner->GetFlippedTexture(owner->ObjectManager, oname)) {
+							filename = oname;
+							break;
+						}
+					}
+				}
+			}
+
+			if (ImGui::BeginCombo(("##gsh_sampler_" + name).c_str(), isHintValue ? "-- NONE --" : UIHelper::TrimFilename(filename).c_str())) {
+				if (ImGui::Selectable("-- NONE --")) {
+					ret = true;
+					if (hint == ShaderLanguage::ShaderNode::Uniform::HINT_BLACK)
+						value[0].uint = ResourceManager::Instance().BlackTexture;
+					else
+						value[0].uint = ResourceManager::Instance().WhiteTexture;
+				}
+
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = owner->GetObjectName(owner->ObjectManager, i);
+					if (owner->IsTexture(owner->ObjectManager, oname)) {
+						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str())) {
+							ret = true;
+							value[0].uint = owner->GetFlippedTexture(owner->ObjectManager, oname);
+						}
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+			ImGui::Image((ImTextureID)value[0].uint, ImVec2(64, 64));
+
 			break;
 		}
 

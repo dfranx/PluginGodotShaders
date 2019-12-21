@@ -98,6 +98,8 @@ namespace gd
 		virtual void ShowPipelineItemContext(const char* type, void* data);
 		virtual const char* ExportPipelineItem(const char* type, void* data);
 		virtual void* ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString);
+		virtual void MovePipelineItemDown(void* ownerData, const char* ownerType, const char* itemName);
+		virtual void MovePipelineItemUp(void* ownerData, const char* ownerType, const char* itemName);
 
 		// options
 		virtual bool HasSectionInOptions();
@@ -156,6 +158,7 @@ namespace gd
 		std::string m_tempXML;
 		std::unordered_map<pipe::Sprite2D*, std::string> m_loadTextures;
 		std::unordered_map<pipe::Sprite2D*, glm::vec2> m_loadSizes;
+		std::unordered_map<std::string, std::pair<PipelineItem*, std::string>> m_loadUniformTextures;
 
 		bool m_saveRequestedCopy;
 

@@ -17,6 +17,8 @@ namespace gd
 		EmptyTexture = 0;
 		CopiedScreenTexture = false;
 		m_createEmptyTexture();
+		m_createBlackTexture();
+		m_createWhiteTexture();
 
 		// default canvas item vertex shader
 		m_canvasVS = R"(
@@ -88,6 +90,44 @@ void main()
 		glGenTextures(1, &EmptyTexture);
 		glBindTexture(GL_TEXTURE_2D, EmptyTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, EMPTY_TEXTURE_SIZE, EMPTY_TEXTURE_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, pData);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		free(pData);
+	}
+	void ResourceManager::m_createBlackTexture()
+	{
+		unsigned char* pData = (unsigned char*)malloc(1 * 1 * 4);
+
+		// checkered texture
+		pData[0] = 0;
+		pData[1] = 0;
+		pData[2] = 0;
+		pData[3] = 255;
+
+		glGenTextures(1, &BlackTexture);
+		glBindTexture(GL_TEXTURE_2D, BlackTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pData);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		free(pData);
+	}
+	void ResourceManager::m_createWhiteTexture()
+	{
+		unsigned char* pData = (unsigned char*)malloc(1 * 1 * 4);
+
+		// checkered texture
+		pData[0] = 255;
+		pData[1] = 255;
+		pData[2] = 255;
+		pData[3] = 255;
+
+		glGenTextures(1, &WhiteTexture);
+		glBindTexture(GL_TEXTURE_2D, WhiteTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pData);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glBindTexture(GL_TEXTURE_2D, 0);

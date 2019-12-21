@@ -867,7 +867,7 @@ std::string ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, 
 Error ShaderCompilerGLES3::compile(VS::ShaderMode p_mode, const std::string &p_code, IdentifierActions *p_actions, const std::string &p_path, GeneratedCode &r_gen_code, std::string& errorMsg, int& errorLine) {
 
 	Error err = parser.compile(p_code, ShaderTypes::get_singleton()->get_functions(p_mode), ShaderTypes::get_singleton()->get_modes(p_mode), ShaderTypes::get_singleton()->get_types());
-
+	
 	if (err != OK) {
 		/*
 		std::vector<std::string> shader = p_code.split("\n");

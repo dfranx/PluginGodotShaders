@@ -2972,7 +2972,10 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 			continue;
 
 		} else {
-			_set_error("Expected expression, found: " + get_token_text(tk));
+			if (tk.type == TokenType::TK_EOF)
+				_set_error("Expected expression, found eof.");
+			else
+				_set_error("Expected expression, found: " + get_token_text(tk));
 			return NULL;
 			//nothing
 		}
@@ -4642,12 +4645,12 @@ Error ShaderLanguage::_parse_shader(const std::unordered_map<std::string, Functi
 						return PARSER_ERROR;
 					}
 
-					if (std::count(p_render_modes.begin(), p_render_modes.end(), mode) > 0) { // TODO: != -1 ?
+					if (std::count(p_render_modes.begin(), p_render_modes.end(), mode) == 0) {
 						_set_error("Invalid render mode: '" + mode + "'");
 						return PARSER_ERROR;
 					}
 
-					if (std::count(shader->render_modes.begin(), shader->render_modes.end(), mode) > 0) { // TODO: != -1 ?
+					if (std::count(shader->render_modes.begin(), shader->render_modes.end(), mode) > 0) {
 						_set_error("Duplicate render mode: '" + mode + "'");
 						return PARSER_ERROR;
 					}

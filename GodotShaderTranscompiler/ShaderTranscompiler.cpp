@@ -62,7 +62,7 @@ namespace gd
 
 		ShaderCompilerGLES3 compiler;
 		Error res = compiler.compile(VisualServer::SHADER_CANVAS_ITEM, in, actions, "shader.gds", genCode, errMsg, errLine);
-
+		
 		if (res != OK) {
 			out.Error = true;
 			out.ErrorMessage = errMsg;
@@ -82,7 +82,8 @@ namespace gd
 
 		// user uniforms
 		for (const auto& key : out.Uniforms)
-			out.Fragment += "uniform " + ShaderLanguage::get_datatype_name(key.second.type) + " m_" + key.first + ";\n";
+			if (!ShaderLanguage::is_sampler_type(key.second.type))
+				out.Fragment += "uniform " + ShaderLanguage::get_datatype_name(key.second.type) + " m_" + key.first + ";\n";
 
 		// textures
 		if (out.SCREEN_TEXTURE)
@@ -126,7 +127,8 @@ namespace gd
 
 		// user uniforms
 		for (const auto& key : out.Uniforms)
-			out.Vertex += "uniform " + ShaderLanguage::get_datatype_name(key.second.type) + " m_" + key.first + ";\n";
+			if (!ShaderLanguage::is_sampler_type(key.second.type))
+				out.Vertex += "uniform " + ShaderLanguage::get_datatype_name(key.second.type) + " m_" + key.first + ";\n";
 
 		// system uniforms
 		if (genCode.uses_vertex_time)

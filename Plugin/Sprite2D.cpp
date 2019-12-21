@@ -54,7 +54,6 @@ namespace gd
 				for (int i = 0; i < ocnt; i++) {
 					const char* oname = Owner->GetObjectName(Owner->ObjectManager, i);
 					if (Owner->IsTexture(Owner->ObjectManager, oname)) {
-						unsigned int texID = Owner->GetTexture(Owner->ObjectManager, oname);
 						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str())) {
 							SetTexture(oname);
 							Owner->ModifyProject(Owner->Project);

@@ -15,7 +15,7 @@ namespace gd
 		ResourceManager();
 		~ResourceManager();
 
-		unsigned int EmptyTexture;
+		unsigned int EmptyTexture, BlackTexture, WhiteTexture;
 		bool CopiedScreenTexture;
 
 		inline const std::string& GetDefaultCanvasVertexShader() { return m_canvasVS; }
@@ -25,5 +25,7 @@ namespace gd
 		std::string m_canvasVS, m_canvasPS;
 
 		void m_createEmptyTexture();
+		void m_createBlackTexture();
+		void m_createWhiteTexture();
 	};
 }

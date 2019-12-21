@@ -47,6 +47,7 @@ namespace gd
 			m_shader = 0;
 			m_modelMat = m_projMat = glm::mat4(1.0f);
 			m_uniforms.clear();
+			m_glslData.BlendMode = Shader::CanvasItem::BLEND_MODE_ADD;
 		}
 		CanvasMaterial::~CanvasMaterial()
 		{
@@ -66,6 +67,8 @@ namespace gd
 
 			if (m_glslData.TIME)
 				glUniform1f(m_timeLoc, Owner->GetTime());
+
+			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0);
 
 			for (const auto& uniform : m_uniforms) {
 				const auto& val = uniform.second.Value;
@@ -90,10 +93,37 @@ namespace gd
 				case ShaderLanguage::TYPE_MAT2: glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
 				case ShaderLanguage::TYPE_MAT3: glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
 				case ShaderLanguage::TYPE_MAT4: glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
-				case ShaderLanguage::TYPE_SAMPLER2D: 
+				case ShaderLanguage::TYPE_SAMPLER2D:
 					glActiveTexture(GL_TEXTURE0 + loc);
 					glBindTexture(GL_TEXTURE_2D, val[0].uint);
+					glUniform1i(glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str()), loc);
 					break;
+				}
+			}
+
+			if (m_glslData.BlendMode == Shader::CanvasItem::BLEND_MODE_DISABLED) {
+				glDisable(GL_BLEND);
+			}
+			else {
+				glEnable(GL_BLEND);
+				switch (m_glslData.BlendMode) {
+					//-1 not handled because not blend is enabled anyway
+				case Shader::CanvasItem::BLEND_MODE_MIX: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_ADD: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_ONE, GL_ONE);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_SUB: {
+					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_MUL: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ZERO, GL_ONE);
+				} break;
 				}
 			}
 		}
@@ -151,7 +181,7 @@ namespace gd
 			static bool firstTime = true;
 			if (firstTime) {
 				ImGui::SetColumnWidth(0, 150.0f);
-				ImGui::SetColumnWidth(1, 75.0f);
+				ImGui::SetColumnWidth(1, 90.0f);
 				firstTime = false;
 			}
 			
@@ -163,7 +193,7 @@ namespace gd
 				ImGui::Text("%s", ShaderLanguage::get_datatype_name(u.second.Type).c_str());
 				ImGui::NextColumn();
 
-				if (UIHelper::ShowValueEditor(u.first, u.second.Type, u.second.Value, u.second.HintType, u.second.HintRange))
+				if (UIHelper::ShowValueEditor(Owner, u.first, u.second.Type, u.second.Value, u.second.HintType, u.second.HintRange))
 					Owner->ModifyProject(Owner->Project);
 				ImGui::NextColumn();
 				ImGui::Separator();
@@ -213,6 +243,7 @@ namespace gd
 					psCodeContent = m_glslData.Fragment;
 				} else {
 					Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, m_glslData.ErrorMessage.c_str(), m_glslData.ErrorLine);
+					return;
 				}
 			}
 
@@ -268,6 +299,7 @@ namespace gd
 
 			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
 			
+
 			// user uniforms
 			for (const auto& uniform : m_glslData.Uniforms) {
 				Uniform* u = &m_uniforms[uniform.first];
@@ -279,14 +311,23 @@ namespace gd
 
 				u->Type = uniform.second.type;
 
-				if (uniform.second.default_value.size() == 0) {
+				bool isSampler = ShaderLanguage::is_sampler_type(u->Type);
+				if (isSampler) {
+					glUniform1i(u->Location, uniform.second.texture_order + 2);
+					u->Location = uniform.second.texture_order + 2;
+				}
+
+				if (uniform.second.default_value.size() == 0 && u->Value.size() == 0) {
 					u->Value.resize(ShaderLanguage::get_cardinality(uniform.second.type));
 					for (auto& val : u->Value)
 						val.sint = 0;
+
+					if (isSampler)
+						u->Value[0].uint = ResourceManager::Instance().WhiteTexture;
 				}
 
 				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(u->Type);
-				bool equal = u->Value.size() == unif[uniform.first].default_value.size();
+				bool equal = u->Value.size() == unif[uniform.first].default_value.size() && !isSampler;
 				for (int i = 0; i < u->Value.size() && equal; i++) {
 					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
 						equal = (u->Value[i].boolean == unif[uniform.first].default_value[i].boolean);
@@ -309,7 +350,28 @@ namespace gd
 					u->HintRange[1] = 0.0f;
 					u->HintRange[2] = scalarType == ShaderLanguage::DataType::TYPE_FLOAT ? 0.01f : 1.0f;
 				}
+				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_WHITE)
+				{
+					if (u->Value[0].uint == ResourceManager::Instance().BlackTexture)
+						u->Value[0].uint = ResourceManager::Instance().WhiteTexture;
+				}
+				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_BLACK)
+				{
+					if (u->Value[0].uint == ResourceManager::Instance().WhiteTexture)
+						u->Value[0].uint = ResourceManager::Instance().BlackTexture;
+				}
 			}
+
+			// erase non used uniforms
+			std::vector<std::string> toBeErased;
+			for (const auto& uniform : m_uniforms)
+			{
+				if (m_glslData.Uniforms.count(uniform.first) == 0)
+					toBeErased.push_back(uniform.first);
+			}
+
+			for (const auto& uniform : toBeErased)
+				m_uniforms.erase(uniform);
 		}
 	}
 }

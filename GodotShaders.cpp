@@ -18,7 +18,7 @@
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
 
 static const char* SLang_Keywords[] = {
-	"shader_type", "render_mode", "hint_color", "hint_color", "hint_albedo", "hint_black_albedo", "hint_normal", "hint_white", "hint_black", "hint_aniso"
+	"shader_type", "render_mode", "hint_color", "hint_range", "hint_albedo", "hint_black_albedo", "hint_normal", "hint_white", "hint_black", "hint_aniso", "discard",
 	
 	"auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
 	"signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
@@ -250,6 +250,7 @@ namespace gd
 	{
 		m_loadTextures.clear();
 		m_loadSizes.clear();
+		m_loadUniformTextures.clear();
 	}
 	void GodotShaders::EndProjectLoading()
 	{
@@ -257,6 +258,20 @@ namespace gd
 			k.first->SetTexture(k.second);
 		for (auto& k : m_loadSizes)
 			k.first->SetSize(k.second);
+
+
+		for (auto& k : m_loadUniformTextures) {
+			std::vector<ShaderLanguage::ConstantNode::Value> value;
+			ShaderLanguage::ConstantNode::Value aval;
+			if (k.second.second.empty())
+				aval.uint = ResourceManager::Instance().WhiteTexture;
+			else {
+				std::string txt = toGenericPath(k.second.second);
+				aval.uint = GetFlippedTexture(ObjectManager, txt.c_str());
+			}
+			value.push_back(aval);
+			((pipe::CanvasMaterial*)k.second.first)->SetUniform(k.first, value);
+		}
 
 
 		for (auto& owner : m_items) {
@@ -418,14 +433,14 @@ namespace gd
 			// check for main items
 			if (strcmp(m_items[i]->Name, itemName) == 0) {
 				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
-					printf("[GSHADER] Deleting %s\n", m_items[i]->Items[j]->Name);
+					printf("[GSHADERS] Deleting %s\n", m_items[i]->Items[j]->Name);
 					delete m_items[i]->Items[j];
 				}
 
 				delete m_items[i];
 				m_items.erase(m_items.begin() + i);
 
-				printf("[GSHADER] Deleting %s\n", itemName);
+				printf("[GSHADERS] Deleting %s\n", itemName);
 
 				break;
 			}
@@ -438,7 +453,7 @@ namespace gd
 						m_items[i]->Items.erase(m_items[i]->Items.begin() + j);
 						found = true;
 
-						printf("[GSHADER] Deleting %s\n", itemName);
+						printf("[GSHADERS] Deleting %s\n", itemName);
 
 						break;
 					}
@@ -456,7 +471,7 @@ namespace gd
 			if (strcmp(m_items[i]->Name, oldName) == 0) {
 				strcpy(m_items[i]->Name, newName);
 
-				printf("[GSHADER] Renaming %s to %s\n", oldName, newName);
+				printf("[GSHADERS] Renaming %s to %s\n", oldName, newName);
 
 				break;
 			}
@@ -468,7 +483,7 @@ namespace gd
 						strcpy(m_items[i]->Items[j]->Name, newName);
 						found = true;
 
-						printf("[GSHADER] Renaming %s to %s\n", oldName, newName);
+						printf("[GSHADERS] Renaming %s to %s\n", oldName, newName);
 
 						break;
 					}
@@ -482,7 +497,7 @@ namespace gd
 	{
 		for (int i = 0; i < m_items.size(); i++)
 			if (strcmp(m_items[i]->Name, owner) == 0) {
-				printf("[GSHADER] Added %s to %s\n", name, owner);
+				printf("[GSHADERS] Added %s to %s\n", name, owner);
 				m_items[i]->Items.push_back((PipelineItem*)data);
 				break;
 			}
@@ -515,6 +530,7 @@ namespace gd
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
 		{
 			glDisable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
 
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
 			odata->Bind();
@@ -526,6 +542,7 @@ namespace gd
 				}
 			}
 
+			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_CULL_FACE);
 		}
 	}
@@ -576,18 +593,31 @@ namespace gd
 				pugi::xml_node uniformNode = uniformsNode.append_child("uniform");
 				uniformNode.append_attribute("name").set_value(u.first.c_str());
 				uniformNode.append_attribute("type").set_value(ShaderLanguage::get_datatype_name(u.second.Type).c_str());
-				
-				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(u.second.Type);
-				for (const auto& val : u.second.Value)
-				{
-					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
-						uniformNode.append_child("value").text().set(val.boolean);
-					else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
-						uniformNode.append_child("value").text().set(val.sint);
-					else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
-						uniformNode.append_child("value").text().set(val.uint);
-					else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
-						uniformNode.append_child("value").text().set(val.real);
+
+				if (ShaderLanguage::is_sampler_type(u.second.Type)) {
+					int ocnt = GetObjectCount(ObjectManager);
+					for (int i = 0; i < ocnt; i++) {
+						const char* oname = GetObjectName(ObjectManager, i);
+						if (IsTexture(ObjectManager, oname)) {
+							if (u.second.Value[0].uint == GetFlippedTexture(ObjectManager, oname)) {
+								uniformNode.append_child("value").text().set(oname);
+								break;
+							}
+						}
+					}
+				} else {
+					ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(u.second.Type);
+					for (const auto& val : u.second.Value)
+					{
+						if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
+							uniformNode.append_child("value").text().set(val.boolean);
+						else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
+							uniformNode.append_child("value").text().set(val.sint);
+						else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
+							uniformNode.append_child("value").text().set(val.uint);
+						else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
+							uniformNode.append_child("value").text().set(val.real);
+					}
 				}
 			}
 			
@@ -634,22 +664,30 @@ namespace gd
 				ShaderLanguage::DataType utype = toDataType(unode.attribute("type").as_string());
 				ShaderLanguage::DataType scalarType = ShaderLanguage::get_scalar_type(utype);
 
-				std::vector<ShaderLanguage::ConstantNode::Value> value;
-				for (const auto& vnode : unode.children("value"))
-				{
-					ShaderLanguage::ConstantNode::Value aval;
-					if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
-						aval.boolean = vnode.text().as_bool();
-					else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
-						aval.sint = vnode.text().as_int();
-					else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
-						aval.uint = vnode.text().as_uint();
-					else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
-						aval.real = vnode.text().as_float();
-					value.push_back(aval);
-				}
+				if (utype == ShaderLanguage::DataType::TYPE_VOID)
+					continue;
 
-				mat->SetUniform(uname, value);
+				if (ShaderLanguage::is_sampler_type(utype)) {
+					std::string txt = unode.child("value").text().as_string();
+					m_loadUniformTextures[uname] = std::make_pair((PipelineItem*)mat, txt);
+				} 
+				else {
+					std::vector<ShaderLanguage::ConstantNode::Value> value;
+					for (const auto& vnode : unode.children("value"))
+					{
+						ShaderLanguage::ConstantNode::Value aval;
+						if (scalarType == ShaderLanguage::DataType::TYPE_BOOL)
+							aval.boolean = vnode.text().as_bool();
+						else if (scalarType == ShaderLanguage::DataType::TYPE_INT)
+							aval.sint = vnode.text().as_int();
+						else if (scalarType == ShaderLanguage::DataType::TYPE_UINT)
+							aval.uint = vnode.text().as_uint();
+						else if (scalarType == ShaderLanguage::DataType::TYPE_FLOAT)
+							aval.real = vnode.text().as_float();
+						value.push_back(aval);
+					}
+					mat->SetUniform(uname, value);
+				}
 			}
 
 			
@@ -678,6 +716,59 @@ namespace gd
 			m_items.push_back(item);
 
 		return (void*)item;
+	}
+	void GodotShaders::MovePipelineItemDown(void* ownerData, const char* ownerType, const char* itemName)
+	{
+		if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)ownerData;
+			if (strcmp(mat->Name, itemName) == 0) {
+				// move the container up
+				for (int i = 0; i < m_items.size(); i++) {
+					if (strcmp(m_items[i]->Name, itemName) == 0) {
+						PipelineItem* temp = m_items[i];
+						m_items[i] = m_items[i + 1];
+						m_items[i + 1] = temp;
+						break;
+					}
+				}
+			} else {
+				for (int i = 0; i < mat->Items.size(); i++) {
+					if (strcmp(mat->Items[i]->Name, itemName) == 0) {
+						PipelineItem* temp = mat->Items[i];
+						mat->Items[i] = mat->Items[i + 1];
+						mat->Items[i + 1] = temp;
+						break;
+					}
+				}
+			}
+		}
+	}
+	void GodotShaders::MovePipelineItemUp(void* ownerData, const char* ownerType, const char* itemName)
+	{
+		if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
+			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)ownerData;
+			if (strcmp(mat->Name, itemName) == 0) {
+				// move the container up
+				for (int i = 0; i < m_items.size(); i++) {
+					if (strcmp(m_items[i]->Name, itemName) == 0) {
+						PipelineItem* temp = m_items[i];
+						m_items[i] = m_items[i - 1];
+						m_items[i - 1] = temp;
+						break;
+					}
+				}
+			}
+			else {
+				for (int i = 0; i < mat->Items.size(); i++) {
+					if (strcmp(mat->Items[i]->Name, itemName) == 0) {
+						PipelineItem* temp = mat->Items[i];
+						mat->Items[i] = mat->Items[i - 1];
+						mat->Items[i - 1] = temp;
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	// options
@@ -856,7 +947,7 @@ namespace gd
 	}
 	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid)
 	{
-		return 155; // TODO: ew
+		return 156; // TODO: ew
 	}
 	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid)
 	{

@@ -132,6 +132,11 @@ namespace gd
 			m_verts[4] = { {0.5f, 0.5f},		{1.0f, 1.0f},	m_color };
 			m_verts[5] = { {-0.5f, 0.5f},		{0.0f, 1.0f},	m_color };
 
+			for (int i = 0; i < 6; i++) {
+				m_verts[i].Position.x *= m_size.x;
+				m_verts[i].Position.y *= m_size.y;
+			}
+
 			// create vao
 			if (m_vao == 0)
 				glGenVertexArrays(1, &m_vao);
@@ -166,8 +171,7 @@ namespace gd
 		{
 			glm::vec3 scaleRect(m_size.x, m_size.y, 1.0f);
 			glm::vec3 posRect(m_pos.x + m_size.x/2, m_pos.y + m_size.y / 2, -1000.0f);
-			m_matrix = glm::translate(glm::mat4(1), posRect) *
-				glm::scale(glm::mat4(1.0f), scaleRect);
+			m_matrix = glm::translate(glm::mat4(1), posRect);
 		}
 	}
 }

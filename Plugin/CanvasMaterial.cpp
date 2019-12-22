@@ -205,7 +205,11 @@ namespace gd
 		void CanvasMaterial::SetModelMatrix(glm::mat4 mat)
 		{
 			m_modelMat = mat;
-			glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
+
+			if (m_glslData.SkipVertexTransform)
+				glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1000.0f))));
+			else
+				glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
 		}
 		void CanvasMaterial::Compile()
 		{
@@ -350,13 +354,11 @@ namespace gd
 					u->HintRange[1] = 0.0f;
 					u->HintRange[2] = scalarType == ShaderLanguage::DataType::TYPE_FLOAT ? 0.01f : 1.0f;
 				}
-				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_WHITE)
-				{
+				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_WHITE) {
 					if (u->Value[0].uint == ResourceManager::Instance().BlackTexture)
 						u->Value[0].uint = ResourceManager::Instance().WhiteTexture;
 				}
-				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_BLACK)
-				{
+				else if (isSampler && u->HintType == ShaderLanguage::ShaderNode::Uniform::HINT_BLACK) {
 					if (u->Value[0].uint == ResourceManager::Instance().WhiteTexture)
 						u->Value[0].uint = ResourceManager::Instance().BlackTexture;
 				}

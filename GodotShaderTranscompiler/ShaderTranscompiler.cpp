@@ -33,6 +33,7 @@ namespace gd
 		out.Error = false;
 		out.LightMode = Shader::CanvasItem::LIGHT_MODE_UNSHADED;
 		out.BlendMode = Shader::CanvasItem::BLEND_MODE_MIX;
+		out.SkipVertexTransform = false;
 		out.Uniforms.clear();
 
 		if (shaderType == VisualServer::SHADER_CANVAS_ITEM) {
@@ -45,6 +46,8 @@ namespace gd
 
 			actions_canvas.render_mode_values["unshaded"] = std::pair<int*, int>(&out.LightMode, Shader::CanvasItem::LIGHT_MODE_UNSHADED);
 			actions_canvas.render_mode_values["light_only"] = std::pair<int*, int>(&out.LightMode, Shader::CanvasItem::LIGHT_MODE_LIGHT_ONLY);
+
+			actions_canvas.render_mode_values["skip_vertex_transform"] = std::pair<int*, int>((int*)&out.SkipVertexTransform, 1);
 
 			actions_canvas.usage_flag_pointers["SCREEN_UV"] = &out.SCREEN_UV;
 			actions_canvas.usage_flag_pointers["SCREEN_PIXEL_SIZE"] = &out.SCREEN_UV;
@@ -138,6 +141,8 @@ namespace gd
 
 		// vertex globals
 		out.Vertex += genCode.vertex_global + "\n";
+
+		printf("skip: %d\n", (int)out.SkipVertexTransform);
 
 		// main()
 		out.Vertex += "void main()\n{\n";

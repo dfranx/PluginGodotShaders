@@ -16,6 +16,7 @@ namespace gd
 		std::string ErrorMessage;
 
 		bool SCREEN_UV, SCREEN_TEXTURE, TIME;
+		bool SkipVertexTransform;
 		int BlendMode, LightMode;
 		std::unordered_map<std::string, ShaderLanguage::ShaderNode::Uniform> Uniforms;
 	};

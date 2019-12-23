@@ -142,8 +142,6 @@ namespace gd
 		// vertex globals
 		out.Vertex += genCode.vertex_global + "\n";
 
-		printf("skip: %d\n", (int)out.SkipVertexTransform);
-
 		// main()
 		out.Vertex += "void main()\n{\n";
 		out.Vertex += "\tvec4 color = color_attrib;\n";

@@ -51,7 +51,9 @@ namespace gd
 			gd::GLSLOutput m_glslData;
 			std::unordered_map<std::string, Uniform> m_uniforms;
 
-			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc, m_timeLoc;
+			float m_vw, m_vh;
+
+			unsigned int m_shader, m_projMatrixLoc, m_modelMatrixLoc, m_timeLoc, m_pixelSizeLoc;
 			glm::mat4 m_projMat;
 			glm::mat4 m_modelMat;
 		};

@@ -131,7 +131,8 @@ namespace gd
 		virtual bool HasShaderFilePathChanged();
 		virtual void UpdateShaderFilePath();
 
-
+		inline unsigned int GetFBO() { return m_fbo; }
+		inline unsigned int GetColorBuffer() { return GetWindowColorTexture(Renderer); }
 
 		bool ShaderPathsUpdated;
 	private:

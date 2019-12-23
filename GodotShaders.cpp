@@ -207,9 +207,14 @@ namespace gd
 
 	void GodotShaders::BeginRender()
 	{
+		ResourceManager::Instance().CopiedScreenTexture = false;
+
 		GetViewportSize(m_rtSize.x, m_rtSize.y);
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
+
+			// update SCREEN_TEXTURE
+			ResourceManager::Instance().ResizeResources(m_lastSize.x, m_lastSize.y);
 
 			// create a FBO
 			if (m_fbo == 0) {

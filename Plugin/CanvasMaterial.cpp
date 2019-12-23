@@ -45,6 +45,7 @@ namespace gd
 			Type = PipelineItemType::CanvasMaterial;
 			memset(ShaderPath, 0, sizeof(char) * MAX_PATH_LENGTH);
 			m_shader = 0;
+			m_vw = m_vh = 1.0f;
 			m_modelMat = m_projMat = glm::mat4(1.0f);
 			m_uniforms.clear();
 			m_glslData.BlendMode = Shader::CanvasItem::BLEND_MODE_ADD;
@@ -56,11 +57,25 @@ namespace gd
 		}
 		void CanvasMaterial::SetViewportSize(float w, float h)
 		{
+			m_vw = w;
+			m_vh = h;
 			m_projMat = glm::ortho(0.0f, w, h, 0.0f, 0.1f, 1000.0f);
 		}
 		void CanvasMaterial::Bind()
 		{
 			// bind shaders
+			if (!m_glslData.Error && m_glslData.SCREEN_TEXTURE)
+			{
+				ResourceManager::Instance().Copy(((gd::GodotShaders*)Owner)->GetColorBuffer(), ((gd::GodotShaders*)Owner)->GetFBO());
+
+				glUseProgram(m_shader);
+				glActiveTexture(GL_TEXTURE0 + 1);
+				glBindTexture(GL_TEXTURE_2D, ResourceManager::Instance().SCREEN_TEXTURE());
+				glUniform1i(glGetUniformLocation(m_shader, "screen_texture"), 1);
+
+				glUniform2f(m_pixelSizeLoc, 1.0f / m_vw, 1.0f/m_vh);
+			}
+
 			glUseProgram(m_shader);
 
 			glUniformMatrix4fv(m_projMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_projMat));
@@ -103,8 +118,7 @@ namespace gd
 
 			if (m_glslData.BlendMode == Shader::CanvasItem::BLEND_MODE_DISABLED) {
 				glDisable(GL_BLEND);
-			}
-			else {
+			} else {
 				glEnable(GL_BLEND);
 				switch (m_glslData.BlendMode) {
 					//-1 not handled because not blend is enabled anyway
@@ -300,6 +314,7 @@ namespace gd
 			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
 			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");
 			m_timeLoc = glGetUniformLocation(m_shader, "time");
+			m_pixelSizeLoc = glGetUniformLocation(m_shader, "screen_pixel_size");
 
 			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
 			

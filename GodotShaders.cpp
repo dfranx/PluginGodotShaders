@@ -1,9 +1,9 @@
 ﻿#include "GodotShaders.h"
-#include <Plugin/CanvasMaterial.h>
-#include <Plugin/Sprite.h>
+#include <Core/ResourceManager.h>
+#include <Core/CanvasMaterial.h>
+#include <Core/Sprite.h>
 #include <UI/UIHelper.h>
 
-#include <Plugin/ResourceManager.h>
 
 #include <utility>
 #include <sstream>

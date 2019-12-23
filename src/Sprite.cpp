@@ -1,5 +1,5 @@
-#include <Plugin/Sprite.h>
-#include <Plugin/ResourceManager.h>
+#include <Core/Sprite.h>
+#include <Core/ResourceManager.h>
 #include <UI/UIHelper.h>
 
 #include <imgui/imgui.h>

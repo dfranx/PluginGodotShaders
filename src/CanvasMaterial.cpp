@@ -1,5 +1,5 @@
-#include <Plugin/CanvasMaterial.h>
-#include <Plugin/ResourceManager.h>
+#include <Core/CanvasMaterial.h>
+#include <Core/ResourceManager.h>
 #include <PluginAPI/Plugin.h>
 #include <UI/UIHelper.h>
 #include "../GodotShaders.h"

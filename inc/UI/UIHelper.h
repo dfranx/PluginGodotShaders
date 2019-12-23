@@ -3,7 +3,7 @@
 #include <vector>
 #include <GodotShaderTranscompiler/Godot/shader_language.h>
 #include <PluginAPI/Plugin.h>
-#include <Plugin/Uniform.h>
+#include <Core/Uniform.h>
 
 #ifdef _WIN32
 #include <windows.h>

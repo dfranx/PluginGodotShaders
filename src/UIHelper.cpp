@@ -1,7 +1,7 @@
 #include <UI/UIHelper.h>
 
 #include <clocale>
-#include <Plugin/ResourceManager.h>
+#include <Core/ResourceManager.h>
 #include <nativefiledialog/nfd.h>
 #include <imgui/imgui.h>
 

@@ -1,7 +1,7 @@
 #pragma once
-#include <Plugin/Settings.h>
-#include <Plugin/PipelineItem.h>
-#include <Plugin/CanvasVertex.h>
+#include <Core/Settings.h>
+#include <Core/PipelineItem.h>
+#include <Core/CanvasVertex.h>
 
 #include <glm/glm.hpp>
 #include <string>

@@ -1,7 +1,7 @@
 #pragma once
-#include <Plugin/Uniform.h>
-#include <Plugin/Settings.h>
-#include <Plugin/PipelineItem.h>
+#include <Core/Uniform.h>
+#include <Core/Settings.h>
+#include <Core/PipelineItem.h>
 #include <GodotShaderTranscompiler/ShaderTranscompiler.h>
 
 #include <glm/glm.hpp>

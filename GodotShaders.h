@@ -1,8 +1,8 @@
 #pragma once
 #include <PluginAPI/Plugin.h>
-#include <Plugin/Sprite.h>
-#include <Plugin/PipelineItem.h>
-#include <Plugin/CanvasMaterial.h>
+#include <Core/Sprite.h>
+#include <Core/PipelineItem.h>
+#include <Core/CanvasMaterial.h>
 
 #include <vector>
 #include <string>

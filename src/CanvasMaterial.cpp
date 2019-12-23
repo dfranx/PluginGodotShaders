@@ -1,11 +1,11 @@
-#include "CanvasMaterial.h"
-#include "ResourceManager.h"
-#include "../PluginAPI/Plugin.h"
-#include "../UI/UIHelper.h"
+#include <Plugin/CanvasMaterial.h>
+#include <Plugin/ResourceManager.h>
+#include <PluginAPI/Plugin.h>
+#include <UI/UIHelper.h>
 #include "../GodotShaders.h"
 
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include <string.h>
 #include <fstream>

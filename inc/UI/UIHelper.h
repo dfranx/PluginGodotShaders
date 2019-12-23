@@ -1,7 +1,7 @@
 #pragma once
 #include <string> 
 #include <vector>
-#include "../GodotShaderTranscompiler/Godot/shader_language.h"
+#include <GodotShaderTranscompiler/Godot/shader_language.h>
 #include "../PluginAPI/Plugin.h"
 
 #ifdef _WIN32

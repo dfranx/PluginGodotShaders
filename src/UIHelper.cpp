@@ -1,9 +1,9 @@
-#include "UIHelper.h"
+#include <UI/UIHelper.h>
 
 #include <clocale>
-#include "../Plugin/ResourceManager.h"
-#include "../nativefiledialog/nfd.h"
-#include "../imgui/imgui.h"
+#include <Plugin/ResourceManager.h>
+#include <nativefiledialog/nfd.h>
+#include <imgui/imgui.h>
 
 namespace gd
 {

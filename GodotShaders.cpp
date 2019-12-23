@@ -17,20 +17,6 @@
 
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
 
-static const char* SLang_Keywords[] = {
-	"shader_type", "render_mode", "hint_color", "hint_range", "hint_albedo", "hint_black_albedo", "hint_normal", "hint_white", "hint_black", "hint_aniso", "discard",
-	
-	"auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
-	"signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
-	"_Noreturn", "_Static_assert", "_Thread_local", "attribute", "uniform", "varying", "layout", "centroid", "flat", "smooth", "noperspective", "patch", "sample", "subroutine", "in", "out", "inout",
-	"bool", "true", "false", "invariant", "mat2", "mat3", "mat4", "dmat2", "dmat3", "dmat4", "mat2x2", "mat2x3", "mat2x4", "dmat2x2", "dmat2x3", "dmat2x4", "mat3x2", "mat3x3", "mat3x4", "dmat3x2", "dmat3x3", "dmat3x4",
-	"mat4x2", "mat4x3", "mat4x4", "dmat4x2", "dmat4x3", "dmat4x4", "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "bvec2", "bvec3", "bvec4", "dvec2", "dvec3", "dvec4", "uint", "uvec2", "uvec3", "uvec4",
-	"lowp", "mediump", "highp", "precision", "sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler1DShadow", "sampler2DShadow", "samplerCubeShadow", "sampler1DArray", "sampler2DArray", "sampler1DArrayShadow",
-	"sampler2DArrayShadow", "isampler1D", "isampler2D", "isampler3D", "isamplerCube", "isampler1DArray", "isampler2DArray", "usampler1D", "usampler2D", "usampler3D", "usamplerCube", "usampler1DArray", "usampler2DArray",
-	"sampler2DRect", "sampler2DRectShadow", "isampler2DRect", "usampler2DRect", "samplerBuffer", "isamplerBuffer", "usamplerBuffer", "sampler2DMS", "isampler2DMS", "usampler2DMS", "sampler2DMSArray", "isampler2DMSArray",
-	"usampler2DMSArray", "samplerCubeArray", "samplerCubeArrayShadow", "isamplerCubeArray", "usamplerCubeArray"
-};
-
 namespace gd
 {
 	std::string toGenericPath(const std::string& p)
@@ -137,7 +123,7 @@ namespace gd
 		ShaderPathsUpdated = false;
 		m_varManagerOpened = false;
 		m_editorCurrentID = 0;
-		m_buildLangDefIdentifiers();
+		m_buildLangDefinition();
 
 		return true;
 	}
@@ -782,8 +768,36 @@ namespace gd
 	void GodotShaders::ShowOptions() { }
 
 	// code editor
-	void GodotShaders::m_buildLangDefIdentifiers()
+	void GodotShaders::m_buildLangDefinition()
 	{
+		// keywords
+		m_langDefKeywords.clear();
+		m_langDefKeywords = {
+			"shader_type", "render_mode", "hint_color", "hint_range", "hint_albedo", "hint_black_albedo", "hint_normal", "hint_white", "hint_black", "hint_aniso", "discard",
+			"auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
+			"signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
+			"_Noreturn", "_Static_assert", "_Thread_local", "attribute", "uniform", "varying", "layout", "centroid", "flat", "smooth", "noperspective", "patch", "sample", "subroutine", "in", "out", "inout",
+			"bool", "true", "false", "invariant", "mat2", "mat3", "mat4", "dmat2", "dmat3", "dmat4", "mat2x2", "mat2x3", "mat2x4", "dmat2x2", "dmat2x3", "dmat2x4", "mat3x2", "mat3x3", "mat3x4", "dmat3x2", "dmat3x3", "dmat3x4",
+			"mat4x2", "mat4x3", "mat4x4", "dmat4x2", "dmat4x3", "dmat4x4", "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "bvec2", "bvec3", "bvec4", "dvec2", "dvec3", "dvec4", "uint", "uvec2", "uvec3", "uvec4",
+			"lowp", "mediump", "highp", "precision", "sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler1DShadow", "sampler2DShadow", "samplerCubeShadow", "sampler1DArray", "sampler2DArray", "sampler1DArrayShadow",
+			"sampler2DArrayShadow", "isampler1D", "isampler2D", "isampler3D", "isamplerCube", "isampler1DArray", "isampler2DArray", "usampler1D", "usampler2D", "usampler3D", "usamplerCube", "usampler1DArray", "usampler2DArray",
+			"sampler2DRect", "sampler2DRectShadow", "isampler2DRect", "usampler2DRect", "samplerBuffer", "isamplerBuffer", "usamplerBuffer", "sampler2DMS", "isampler2DMS", "usampler2DMS", "sampler2DMSArray", "isampler2DMSArray",
+			"usampler2DMSArray", "samplerCubeArray", "samplerCubeArrayShadow", "isamplerCubeArray", "usamplerCubeArray"
+		};
+
+		// regex
+		m_langDefRegex.clear();
+		m_langDefRegex.push_back(std::make_pair("[ \\t]*#[ \\t]*[a-zA-Z_]+", ed::plugin::TextEditorPaletteIndex::Preprocessor));
+		m_langDefRegex.push_back(std::make_pair("L?\\\"(\\\\.|[^\\\"])*\\\"", ed::plugin::TextEditorPaletteIndex::String));
+		m_langDefRegex.push_back(std::make_pair("\\'\\\\?[^\\']\\'", ed::plugin::TextEditorPaletteIndex::CharLiteral));
+		m_langDefRegex.push_back(std::make_pair("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?", ed::plugin::TextEditorPaletteIndex::Number));
+		m_langDefRegex.push_back(std::make_pair("[+-]?[0-9]+[Uu]?[lL]?[lL]?", ed::plugin::TextEditorPaletteIndex::Number));
+		m_langDefRegex.push_back(std::make_pair("0[0-7]+[Uu]?[lL]?[lL]?", ed::plugin::TextEditorPaletteIndex::Number));
+		m_langDefRegex.push_back(std::make_pair("0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?", ed::plugin::TextEditorPaletteIndex::Number));
+		m_langDefRegex.push_back(std::make_pair("[a-zA-Z_][a-zA-Z0-9_]*", ed::plugin::TextEditorPaletteIndex::Identifier));
+		m_langDefRegex.push_back(std::make_pair("[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]", ed::plugin::TextEditorPaletteIndex::Punctuation));
+
+		// identifiers
 		m_langDefIdentifiers.clear();
 		m_langDefIdentifiers.push_back(std::make_pair("radians", "Converts x from degrees to radians."));
 		m_langDefIdentifiers.push_back(std::make_pair("degrees", "Converts x from radians to degrees."));
@@ -953,59 +967,20 @@ namespace gd
 	}
 	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid)
 	{
-		return 156; // TODO: ew
+		return m_langDefKeywords.size();
 	}
 	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid)
 	{
-		return SLang_Keywords;
+		return m_langDefKeywords.data();
 	}
 	int GodotShaders::GetLanguageDefinitionTokenRegexCount(int sid)
 	{
-		return 9; // TODO: ew
+		return m_langDefRegex.size();
 	}
 	const char* GodotShaders::GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid)
 	{
-		// TODO: ew
-		switch (index) {
-		case 0:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Preprocessor;
-			return "[ \\t]*#[ \\t]*[a-zA-Z_]+";
-			break;
-		case 1:
-			palIndex = ed::plugin::TextEditorPaletteIndex::String;
-			return "L?\\\"(\\\\.|[^\\\"])*\\\"";
-			break;
-		case 2:
-			palIndex = ed::plugin::TextEditorPaletteIndex::CharLiteral;
-			return "\\'\\\\?[^\\']\\'";
-			break;
-		case 3:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
-			return "[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?";
-			break;
-		case 4:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
-			return "[+-]?[0-9]+[Uu]?[lL]?[lL]?";
-			break;
-		case 5:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
-			return "0[0-7]+[Uu]?[lL]?[lL]?";
-			break;
-		case 6:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Number;
-			return "0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?";
-			break;
-		case 7:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Identifier;
-			return "[a-zA-Z_][a-zA-Z0-9_]*";
-			break;
-		case 8:
-			palIndex = ed::plugin::TextEditorPaletteIndex::Punctuation;
-			return "[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]";
-			break;
-		}
-
-		return "";
+		palIndex = m_langDefRegex[index].second;
+		return m_langDefRegex[index].first;
 	}
 	int GodotShaders::GetLanguageDefinitionIdentifierCount(int sid)
 	{

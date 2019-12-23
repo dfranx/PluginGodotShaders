@@ -1,7 +1,7 @@
 #pragma once
 #include "Settings.h"
 #include "PipelineItem.h"
-#include "../GodotShaderTranscompiler/ShaderTranscompiler.h"
+#include <GodotShaderTranscompiler/ShaderTranscompiler.h>
 
 #include <glm/glm.hpp>
 

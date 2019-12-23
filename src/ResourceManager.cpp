@@ -1,4 +1,4 @@
-#include "ResourceManager.h"
+#include <Plugin/ResourceManager.h>
 #include <memory>
 
 #include <glm/glm.hpp>

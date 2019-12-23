@@ -140,12 +140,14 @@ namespace gd
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
 
 		bool m_varManagerOpened;
-		
+				
 		bool m_createSpritePopup;
 		std::string m_createSpriteTexture;
 
+		std::vector<const char*> m_langDefKeywords;
+		std::vector<std::pair<const char*, ed::plugin::TextEditorPaletteIndex>> m_langDefRegex;
 		std::vector<std::pair<const char*, const char*>> m_langDefIdentifiers;
-		void m_buildLangDefIdentifiers();
+		void m_buildLangDefinition();
 		std::vector<std::string> m_editorOpened;
 		std::vector<int> m_editorID;
 		int m_editorCurrentID;

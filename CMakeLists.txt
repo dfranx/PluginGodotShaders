@@ -8,26 +8,26 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ./bin)
 set(SOURCES
 	dllmain.cpp
 	GodotShaders.cpp
-	Plugin/CanvasMaterial.cpp
-	Plugin/Sprite2D.cpp
-	Plugin/ResourceManager.cpp
+	src/CanvasMaterial.cpp
+	src/Sprite2D.cpp
+	src/ResourceManager.cpp
 
 # UI
-	UI/UIHelper.cpp
+	src/UIHelper.cpp
 
 # shader transcompiler
-	GodotShaderTranscompiler/Godot/shader_types.cpp
-	GodotShaderTranscompiler/Godot/shader_language.cpp
-	GodotShaderTranscompiler/Godot/shader_compiler_gles3.cpp
-	GodotShaderTranscompiler/Godot/misc.cpp	
-	GodotShaderTranscompiler/ShaderTranscompiler.cpp
+	libs/GodotShaderTranscompiler/Godot/shader_types.cpp
+	libs/GodotShaderTranscompiler/Godot/shader_language.cpp
+	libs/GodotShaderTranscompiler/Godot/shader_compiler_gles3.cpp
+	libs/GodotShaderTranscompiler/Godot/misc.cpp	
+	libs/GodotShaderTranscompiler/ShaderTranscompiler.cpp
 
 # libraries
-	imgui/imgui_draw.cpp
-	imgui/imgui_widgets.cpp
-	imgui/imgui.cpp
-	pugixml/src/pugixml.cpp	
-	nativefiledialog/nfd_common.c
+	libs/imgui/imgui_draw.cpp
+	libs/imgui/imgui_widgets.cpp
+	libs/imgui/imgui.cpp
+	libs/pugixml/src/pugixml.cpp	
+	libs/nativefiledialog/nfd_common.c
 )
 
 # cmake toolchain 
@@ -39,17 +39,17 @@ endif(CMAKE_TOOLCHAIN_FILE)
 if(WIN32)
 	set(SOURCES
 		"${SOURCES}"
-		nativefiledialog/nfd_win.cpp
+		libs/nativefiledialog/nfd_win.cpp
 	)
 elseif(APPLE)
 	set(SOURCES
 		"${SOURCES}"
-		nativefiledialog/nfd_cocoa.m
+		libs/nativefiledialog/nfd_cocoa.m
 	)
 else()
 	set(SOURCES
 		"${SOURCES}"
-		nativefiledialog/nfd_gtk.c
+		libs/nativefiledialog/nfd_gtk.c
 	)
 	
 	# link gtk on linux
@@ -85,6 +85,7 @@ set_target_properties(GodotShaders PROPERTIES PREFIX "")
 
 # include directories
 target_include_directories(GodotShaders PRIVATE ${SDL2_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
+target_include_directories(GodotShaders PRIVATE libs inc)
 
 # link libraries
 target_link_libraries(GodotShaders ${GLM_LIBRARY_DIRS} ${OPENGL_LIBRARIES})

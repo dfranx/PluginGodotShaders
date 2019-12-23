@@ -1,9 +1,9 @@
-#include "Sprite2D.h"
-#include "ResourceManager.h"
-#include "../UI/UIHelper.h"
+#include <Plugin/Sprite2D.h>
+#include <Plugin/ResourceManager.h>
+#include <UI/UIHelper.h>
 
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -169,7 +169,6 @@ namespace gd
 		}
 		void Sprite2D::m_buildMatrix()
 		{
-			glm::vec3 scaleRect(m_size.x, m_size.y, 1.0f);
 			glm::vec3 posRect(m_pos.x + m_size.x/2, m_pos.y + m_size.y / 2, -1000.0f);
 			m_matrix = glm::translate(glm::mat4(1), posRect);
 		}

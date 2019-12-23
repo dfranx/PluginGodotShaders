@@ -36,6 +36,8 @@ namespace ed
 
 		typedef bool (*ExistsPipelineItemFn)(void* pipeline, const char* name);
 		typedef void* (*GetPipelineItemFn)(void* pipeline, const char* name);
+		typedef int (*GetPipelineItemCountFn)(void* pipeline);
+		typedef plugin::PipelineItemType (*GetPipelineItemTypeFn)(void* pipeline, int index);
 
 		typedef void (*BindShaderPassVariablesFn)(void* shaderpass, void* item);
 		typedef void (*GetViewMatrixFn)(float* out);
@@ -239,5 +241,7 @@ namespace ed
 		pluginfn::GetTextureSizeFn GetTextureSize;
 		pluginfn::BindDefaultStateFn BindDefaultState;
 		pluginfn::OpenInCodeEditorFn OpenInCodeEditor;
+		pluginfn::GetPipelineItemCountFn GetPipelineItemCount;
+		pluginfn::GetPipelineItemTypeFn GetPipelineItemType;
 	};
 }

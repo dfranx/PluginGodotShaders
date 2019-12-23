@@ -123,6 +123,7 @@ namespace gd
 		ShaderPathsUpdated = false;
 		m_varManagerOpened = false;
 		m_editorCurrentID = 0;
+		m_lastErrorCheck = 0.0f;
 		m_buildLangDefinition();
 
 		return true;
@@ -130,7 +131,20 @@ namespace gd
 	void GodotShaders::OnEvent(void* e) { }
 	void GodotShaders::Update(float delta)
 	{
-		// TODO: check every 500ms if ShaderPass is used -> push an error message if yes
+		if (GetTime() - m_lastErrorCheck > 0.75f) {
+			ClearMessageGroup(Messages, "[GodotShaders]");
+			if (m_items.size() > 0) {
+				int pipeCount = GetPipelineItemCount(PipelineManager);
+				for (int i = 0; i < pipeCount; i++) {
+					ed::plugin::PipelineItemType type = GetPipelineItemType(PipelineManager, i);
+
+					if (type != ed::plugin::PipelineItemType::PluginItem)
+						AddMessage(Messages, ed::plugin::MessageType::Error, "[GodotShaders]", "Not allowed to use ShaderPass alongside Godot's materials.", 0);
+				}
+			}
+
+			m_lastErrorCheck = GetTime();
+		}
 
 
 		// ##### UNIFORM MANAGER POPUP #####
@@ -425,7 +439,7 @@ namespace gd
 			// check for main items
 			if (strcmp(m_items[i]->Name, itemName) == 0) {
 				for (size_t j = 0; j < m_items[i]->Items.size(); j++) {
-					printf("[GSHADERS] Deleting %s\n", m_items[i]->Items[j]->Name);
+					printf("[GSHADERS] Deleting item %s\n", m_items[i]->Items[j]->Name);
 					delete m_items[i]->Items[j];
 				}
 
@@ -445,7 +459,7 @@ namespace gd
 						m_items[i]->Items.erase(m_items[i]->Items.begin() + j);
 						found = true;
 
-						printf("[GSHADERS] Deleting %s\n", itemName);
+						printf("[GSHADERS] Deleting item %s\n", itemName);
 
 						break;
 					}

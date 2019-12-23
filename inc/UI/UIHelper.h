@@ -2,7 +2,8 @@
 #include <string> 
 #include <vector>
 #include <GodotShaderTranscompiler/Godot/shader_language.h>
-#include "../PluginAPI/Plugin.h"
+#include <PluginAPI/Plugin.h>
+#include <Plugin/Uniform.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -17,7 +18,7 @@ namespace gd
 		static bool GetOpenFileDialog(std::string& outPath, const std::string& files = "");
 		static bool GetSaveFileDialog(std::string& outPath, const std::string& files = "");
 
-		static bool ShowValueEditor(ed::IPlugin* owner, const std::string& name, ShaderLanguage::DataType type, std::vector<ShaderLanguage::ConstantNode::Value>& value, ShaderLanguage::ShaderNode::Uniform::Hint hint, float hint_range[3]);
+		static bool ShowValueEditor(ed::IPlugin* owner, const std::string& name, Uniform& u);
 	
 		static std::string TrimFilename(const std::string& path);
 	};

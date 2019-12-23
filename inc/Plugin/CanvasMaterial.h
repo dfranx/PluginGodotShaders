@@ -1,6 +1,7 @@
 #pragma once
-#include "Settings.h"
-#include "PipelineItem.h"
+#include <Plugin/Uniform.h>
+#include <Plugin/Settings.h>
+#include <Plugin/PipelineItem.h>
 #include <GodotShaderTranscompiler/ShaderTranscompiler.h>
 
 #include <glm/glm.hpp>
@@ -26,17 +27,6 @@ namespace gd
 
 			void SetModelMatrix(glm::mat4 mat);
 
-			struct Uniform // TODO: move this to a separate file
-			{
-				unsigned int Location;
-				ShaderLanguage::DataType Type;
-				std::vector<ShaderLanguage::ConstantNode::Value> Value;
-
-
-				ShaderLanguage::ShaderNode::Uniform::Hint HintType;
-				float HintRange[3];
-
-			};
 
 			inline const std::unordered_map<std::string, Uniform>& GetUniforms() { return m_uniforms; }
 			inline void SetUniform(const std::string& name, const std::vector<ShaderLanguage::ConstantNode::Value>& val)

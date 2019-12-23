@@ -207,7 +207,7 @@ namespace gd
 				ImGui::Text("%s", ShaderLanguage::get_datatype_name(u.second.Type).c_str());
 				ImGui::NextColumn();
 
-				if (UIHelper::ShowValueEditor(Owner, u.first, u.second.Type, u.second.Value, u.second.HintType, u.second.HintRange))
+				if (UIHelper::ShowValueEditor(Owner, u.first, u.second))
 					Owner->ModifyProject(Owner->Project);
 				ImGui::NextColumn();
 				ImGui::Separator();

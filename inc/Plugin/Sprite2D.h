@@ -1,6 +1,6 @@
 #pragma once
-#include "Settings.h"
-#include "PipelineItem.h"
+#include <Plugin/Settings.h>
+#include <Plugin/PipelineItem.h>
 
 #include <glm/glm.hpp>
 #include <string>

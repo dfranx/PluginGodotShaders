@@ -1,6 +1,6 @@
 #pragma once
-#include "Settings.h"
-#include "../PluginAPI/Plugin.h"
+#include <Plugin/Settings.h>
+#include <PluginAPI/Plugin.h>
 #include <vector>
 
 namespace gd

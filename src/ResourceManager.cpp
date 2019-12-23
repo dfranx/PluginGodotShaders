@@ -360,13 +360,6 @@ void main()
 				glDisable(GL_SCISSOR_TEST);
 				glColorMask(1, 1, 1, 1);
 				
-				/*
-				TODO: ???
-				if (!rt->buffers.active) {
-					glDepthMask(GL_TRUE);
-				}
-				*/
-
 				for (int j = 0; j < m_mipmapData[i].Sizes.size(); j++) {
 
 					MipmapSize& mm = m_mipmapData[i].Sizes[j];

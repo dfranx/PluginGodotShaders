@@ -139,6 +139,8 @@ namespace gd
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
 
+		float m_lastErrorCheck;
+
 		bool m_varManagerOpened;
 				
 		bool m_createSpritePopup;

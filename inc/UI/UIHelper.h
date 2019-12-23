@@ -18,6 +18,9 @@ namespace gd
 		static bool GetOpenFileDialog(std::string& outPath, const std::string& files = "");
 		static bool GetSaveFileDialog(std::string& outPath, const std::string& files = "");
 
+		static void TexturePreview(unsigned int tex, float w, float h);
+		static void TexturePreview(unsigned int tex);
+
 		static bool ShowValueEditor(ed::IPlugin* owner, const std::string& name, Uniform& u);
 	
 		static std::string TrimFilename(const std::string& path);

@@ -5,6 +5,15 @@
 #include <nativefiledialog/nfd.h>
 #include <imgui/imgui.h>
 
+#include <GL/glew.h>
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
+#define TEXTURE_PREVIEW_WIDTH 96
+
 namespace gd
 {
 	bool UIHelper::GetOpenDirectoryDialog(std::string& outPath)
@@ -51,6 +60,22 @@ namespace gd
 		else if (result == NFD_ERROR) { /* TODO: log */ }
 
 		return false;
+	}
+
+	void UIHelper::TexturePreview(unsigned int tex, float w, float h)
+	{
+		ImGui::Image((ImTextureID)tex, ImVec2(TEXTURE_PREVIEW_WIDTH, (h/w) * TEXTURE_PREVIEW_WIDTH));
+	}
+	void UIHelper::TexturePreview(unsigned int tex)
+	{
+		// get texture size
+		int w, h;
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		ImGui::Image((ImTextureID)tex, ImVec2(TEXTURE_PREVIEW_WIDTH, ((float)h / w) * TEXTURE_PREVIEW_WIDTH));
 	}
 
 	bool UIHelper::ShowValueEditor(ed::IPlugin* owner, const std::string& name, Uniform& u)
@@ -175,8 +200,9 @@ namespace gd
 
 				ImGui::EndCombo();
 			}
-			ImGui::Image((ImTextureID)u.Value[0].uint, ImVec2(64, 64));
 
+			UIHelper::TexturePreview(u.Value[0].uint);
+			
 			break;
 		}
 

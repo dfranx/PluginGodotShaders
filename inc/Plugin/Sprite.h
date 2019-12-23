@@ -9,11 +9,11 @@ namespace gd
 {
 	namespace pipe
 	{
-		class Sprite2D : public PipelineItem
+		class Sprite : public PipelineItem
 		{
 		public:
-			Sprite2D();
-			~Sprite2D();
+			Sprite();
+			~Sprite();
 
 			void SetTexture(const std::string& texObjName);
 			void SetColor(glm::vec4 clr);

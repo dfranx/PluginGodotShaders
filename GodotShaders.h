@@ -1,8 +1,8 @@
 #pragma once
-#include "PluginAPI/Plugin.h"
-#include "Plugin/Sprite2D.h"
-#include "Plugin/PipelineItem.h"
-#include "Plugin/CanvasMaterial.h"
+#include <PluginAPI/Plugin.h>
+#include <Plugin/Sprite.h>
+#include <Plugin/PipelineItem.h>
+#include <Plugin/CanvasMaterial.h>
 
 #include <vector>
 #include <string>
@@ -161,8 +161,8 @@ namespace gd
 		PipelineItem* m_popupItem;
 		
 		std::string m_tempXML;
-		std::unordered_map<pipe::Sprite2D*, std::string> m_loadTextures;
-		std::unordered_map<pipe::Sprite2D*, glm::vec2> m_loadSizes;
+		std::unordered_map<pipe::Sprite*, std::string> m_loadTextures;
+		std::unordered_map<pipe::Sprite*, glm::vec2> m_loadSizes;
 		std::unordered_map<std::string, std::pair<PipelineItem*, std::string>> m_loadUniformTextures;
 
 		bool m_saveRequestedCopy;

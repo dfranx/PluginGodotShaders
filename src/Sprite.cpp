@@ -1,4 +1,4 @@
-#include <Plugin/Sprite2D.h>
+#include <Plugin/Sprite.h>
 #include <Plugin/ResourceManager.h>
 #include <UI/UIHelper.h>
 
@@ -19,7 +19,7 @@ namespace gd
 {
 	namespace pipe
 	{
-		Sprite2D::Sprite2D()
+		Sprite::Sprite()
 		{
 			m_color = glm::vec4(1.0f);
 			m_size = glm::vec2(1.0f);
@@ -28,9 +28,9 @@ namespace gd
 			m_texName = "";
 			m_vao = 0;
 			m_vbo = 0;
-			Type = PipelineItemType::Sprite2D;
+			Type = PipelineItemType::Sprite;
 		}
-		Sprite2D::~Sprite2D()
+		Sprite::~Sprite()
 		{
 			if (m_vao != 0)
 				glDeleteVertexArrays(1, &m_vao);
@@ -39,7 +39,7 @@ namespace gd
 				glDeleteBuffers(1, &m_vbo);
 		}
 
-		void Sprite2D::ShowProperties()
+		void Sprite::ShowProperties()
 		{
 			ImGui::Text("Texture:");
 			ImGui::SameLine();
@@ -64,7 +64,7 @@ namespace gd
 				ImGui::EndCombo();
 			}
 			ImGui::PopItemWidth();
-			ImGui::Image((ImTextureID)m_texID, ImVec2(64, 64));
+			UIHelper::TexturePreview(m_texID);
 			ImGui::Separator();
 
 			ImGui::Text("Position: "); ImGui::SameLine();
@@ -84,7 +84,7 @@ namespace gd
 			ImGui::PopItemWidth(); ImGui::Separator();
 		}
 
-		void Sprite2D::SetTexture(const std::string& texObjName)
+		void Sprite::SetTexture(const std::string& texObjName)
 		{
 			if (texObjName.empty()) {
 				// empty texture
@@ -109,12 +109,12 @@ namespace gd
 			m_size = glm::vec2(w,h);
 			m_buildVBO();
 		}
-		void Sprite2D::SetColor(glm::vec4 clr)
+		void Sprite::SetColor(glm::vec4 clr)
 		{
 			m_color = clr;
 			m_buildVBO();
 		}
-		void Sprite2D::Draw()
+		void Sprite::Draw()
 		{
 			glActiveTexture(GL_TEXTURE0 + 0);
 			glBindTexture(GL_TEXTURE_2D, m_texID);
@@ -123,7 +123,7 @@ namespace gd
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
-		void Sprite2D::m_buildVBO()
+		void Sprite::m_buildVBO()
 		{
 			m_verts[0] = { {-0.5f, -0.5f},		{0.0f, 0.0f},	m_color };
 			m_verts[1] = { {0.5f, -0.5f},		{1.0f, 0.0f},	m_color };
@@ -148,18 +148,18 @@ namespace gd
 			glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
 			// vbo data
-			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Sprite2D::Vertex), m_verts, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Sprite::Vertex), m_verts, GL_STATIC_DRAW);
 
 			// position
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite2D::Vertex), (void*)0);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)0);
 			glEnableVertexAttribArray(0);
 
 			// color
-			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Sprite2D::Vertex), (void*)(4 * sizeof(GLfloat)));
+			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)(4 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(1);
 
 			// uv
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite2D::Vertex), (void*)(2 * sizeof(GLfloat)));
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)(2 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(2);
 
 			glBindVertexArray(0);
@@ -167,7 +167,7 @@ namespace gd
 
 			m_buildMatrix();
 		}
-		void Sprite2D::m_buildMatrix()
+		void Sprite::m_buildMatrix()
 		{
 			glm::vec3 posRect(m_pos.x + m_size.x/2, m_pos.y + m_size.y / 2, -1000.0f);
 			m_matrix = glm::translate(glm::mat4(1), posRect);

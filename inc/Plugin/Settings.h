@@ -4,4 +4,4 @@
 #define PIPELINE_ITEM_NAME_LENGTH 32
 
 #define ITEM_NAME_CANVAS_MATERIAL "GCanvasMaterial"
-#define ITEM_NAME_SPRITE2D "GSprite2D"
+#define ITEM_NAME_SPRITE "GSprite"

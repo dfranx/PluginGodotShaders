@@ -9,7 +9,7 @@ set(SOURCES
 	dllmain.cpp
 	GodotShaders.cpp
 	src/CanvasMaterial.cpp
-	src/Sprite2D.cpp
+	src/Sprite.cpp
 	src/ResourceManager.cpp
 
 # UI

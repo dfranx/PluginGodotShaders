@@ -1,18 +1,18 @@
 ﻿#include "GodotShaders.h"
-#include "Plugin/CanvasMaterial.h"
-#include "Plugin/Sprite2D.h"
-#include "UI/UIHelper.h"
+#include <Plugin/CanvasMaterial.h>
+#include <Plugin/Sprite.h>
+#include <UI/UIHelper.h>
 
-#include "Plugin/ResourceManager.h"
+#include <Plugin/ResourceManager.h>
 
 #include <utility>
 #include <sstream>
 #include <fstream>
 #include <string.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "imgui/imgui.h"
-#include "pugixml/src/pugixml.hpp"
-#include "ghc/filesystem.hpp"
+#include <imgui/imgui.h>
+#include <pugixml/src/pugixml.hpp>
+#include <ghc/filesystem.hpp>
 
 
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
@@ -91,7 +91,7 @@ namespace gd
 	void GodotShaders::m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex)
 	{
 		// initialize the data
-		pipe::Sprite2D* data = new pipe::Sprite2D();
+		pipe::Sprite* data = new pipe::Sprite();
 
 		// generate name
 		std::string name = "Sprite";
@@ -104,7 +104,7 @@ namespace gd
 		// add the item
 		void* ownerData = GetPipelineItem(PipelineManager, owner->Name);
 
-		AddCustomPipelineItem(PipelineManager, ownerData, name.c_str(), ITEM_NAME_SPRITE2D, data, this);
+		AddCustomPipelineItem(PipelineManager, ownerData, name.c_str(), ITEM_NAME_SPRITE, data, this);
 
 		// add it to our local list
 		strcpy(data->Name, name.c_str());
@@ -189,9 +189,12 @@ namespace gd
 			}
 
 			if (m_createSpriteTexture.empty())
-				ImGui::Image((ImTextureID)(ResourceManager::Instance().EmptyTexture), ImVec2(64,64));
-			else
-				ImGui::Image((ImTextureID)GetFlippedTexture(ObjectManager, m_createSpriteTexture.c_str()), ImVec2(64, 64));
+				UIHelper::TexturePreview(ResourceManager::Instance().EmptyTexture, 128, 128);
+			else {
+				int texpw, texph;
+				GetTextureSize(ObjectManager, m_createSpriteTexture.c_str(), texpw, texph);
+				UIHelper::TexturePreview(GetFlippedTexture(ObjectManager, m_createSpriteTexture.c_str()),texpw,texph);
+			}
 
 			if (ImGui::Button("Ok")) {
 				m_addSprite((pipe::CanvasMaterial*)m_popupItem, m_createSpriteTexture);
@@ -212,7 +215,6 @@ namespace gd
 		GetViewportSize(m_rtSize.x, m_rtSize.y);
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
-
 
 			// update SCREEN_TEXTURE
 			ResourceManager::Instance().ResizeResources(m_lastSize.x, m_lastSize.y);
@@ -339,7 +341,7 @@ namespace gd
 		else if (strcmp(name, "pluginitem_add") == 0) {
 			const char* ownerType = (const char*)owner;
 			if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
-				if (ImGui::Selectable("Create " ITEM_NAME_SPRITE2D)) {
+				if (ImGui::Selectable("Create " ITEM_NAME_SPRITE)) {
 					m_createSpritePopup = true;
 					m_popupItem = (PipelineItem*)extraData;
 				}
@@ -395,7 +397,7 @@ namespace gd
 	bool GodotShaders::HasPipelineItemProperties(const char* type)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 ||
-			strcmp(type, ITEM_NAME_SPRITE2D) == 0;
+			strcmp(type, ITEM_NAME_SPRITE) == 0;
 	}
 	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
 	{
@@ -403,8 +405,8 @@ namespace gd
 			pipe::CanvasMaterial* item = (pipe::CanvasMaterial*)data;
 			item->ShowProperties();
 		}
-		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
-			pipe::Sprite2D* item = (pipe::Sprite2D*)data;
+		else if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
+			pipe::Sprite* item = (pipe::Sprite*)data;
 			item->ShowProperties();
 		}
 	}
@@ -514,9 +516,9 @@ namespace gd
 	}
 	void* GodotShaders::CopyPipelineItemData(const char* type, void* data)
 	{
-		if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
-			gd::pipe::Sprite2D* idata = (gd::pipe::Sprite2D*)data;
-			gd::pipe::Sprite2D* newData = new gd::pipe::Sprite2D();
+		if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
+			gd::pipe::Sprite* idata = (gd::pipe::Sprite*)data;
+			gd::pipe::Sprite* newData = new gd::pipe::Sprite();
 
 			strcpy(newData->Name, idata->Name);
 			newData->Owner = idata->Owner;
@@ -541,8 +543,8 @@ namespace gd
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
 			odata->Bind();
 			for (PipelineItem* item : odata->Items) {
-				if (item->Type == PipelineItemType::Sprite2D) {
-					pipe::Sprite2D* sprite = (pipe::Sprite2D*)item;
+				if (item->Type == PipelineItemType::Sprite) {
+					pipe::Sprite* sprite = (pipe::Sprite*)item;
 					odata->SetModelMatrix(sprite->GetMatrix());
 					sprite->Draw();
 				}
@@ -633,8 +635,8 @@ namespace gd
 
 			return m_tempXML.c_str();
 		}
-		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
-			pipe::Sprite2D* spr = (pipe::Sprite2D*)data;
+		else if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
+			pipe::Sprite* spr = (pipe::Sprite*)data;
 
 			pugi::xml_document doc;
 			doc.append_child("texture").text().set(spr->GetTexture().c_str());
@@ -699,9 +701,9 @@ namespace gd
 			
 			printf("[GSHADERS] Loading CanvasMaterial\n");
 		}
-		else if (strcmp(type, ITEM_NAME_SPRITE2D) == 0) {
-			item = new pipe::Sprite2D();
-			pipe::Sprite2D* spr = (pipe::Sprite2D*)item;
+		else if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
+			item = new pipe::Sprite();
+			pipe::Sprite* spr = (pipe::Sprite*)item;
 
 			float w = doc.child("width").text().as_float();
 			float h = doc.child("height").text().as_float();

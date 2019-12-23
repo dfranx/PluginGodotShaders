@@ -8,7 +8,7 @@ namespace gd
 	enum class PipelineItemType
 	{
 		CanvasMaterial,
-		Sprite2D
+		Sprite
 	};
 
 	class PipelineItem

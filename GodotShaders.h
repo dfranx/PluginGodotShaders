@@ -121,6 +121,7 @@ namespace gd
 		virtual bool IsLanguageDefinitionCaseSensitive(int sid);
 		virtual bool GetLanguageDefinitionAutoIndent(int sid);
 		virtual const char* GetLanguageDefinitionName(int sid);
+		virtual const char* GetLanguageAbbreviation(int id);
 
 		// misc
 		virtual bool HandleDropFile(const char* filename);

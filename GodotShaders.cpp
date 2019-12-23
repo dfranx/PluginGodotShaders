@@ -1025,6 +1025,7 @@ namespace gd
 	bool GodotShaders::IsLanguageDefinitionCaseSensitive(int sid) { return true; }
 	bool GodotShaders::GetLanguageDefinitionAutoIndent(int sid) { return true; }
 	const char* GodotShaders::GetLanguageDefinitionName(int sid) { return "Godot"; }
+	const char* GodotShaders::GetLanguageAbbreviation(int id) { return "CM"; } // CM as in CanvasMaterial
 
 	// misc
 	bool GodotShaders::HandleDropFile(const char* filename) { return false; }

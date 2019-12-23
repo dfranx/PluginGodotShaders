@@ -180,6 +180,7 @@ namespace ed
 		virtual bool IsLanguageDefinitionCaseSensitive(int id) = 0;
 		virtual bool GetLanguageDefinitionAutoIndent(int id) = 0;
 		virtual const char* GetLanguageDefinitionName(int id) = 0;
+		virtual const char* GetLanguageAbbreviation(int id) = 0;
 
 		// misc
 		virtual bool HandleDropFile(const char* filename) = 0;

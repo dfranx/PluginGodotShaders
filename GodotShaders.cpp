@@ -213,6 +213,7 @@ namespace gd
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
 
+
 			// update SCREEN_TEXTURE
 			ResourceManager::Instance().ResizeResources(m_lastSize.x, m_lastSize.y);
 

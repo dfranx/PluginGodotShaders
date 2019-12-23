@@ -210,6 +210,8 @@ void main()
 		if (m_mipmapData[0].Sizes.size() == 0 || CopiedScreenTexture)
 			return;
 
+		CopiedScreenTexture = true;
+
 		glDisable(GL_BLEND);
 
 		glm::vec2 wh(m_rtw, m_rth);
@@ -292,12 +294,18 @@ void main()
 
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		if (m_quadVAO != 0) printf("Created VAO!\n");
 	}
 	void ResourceManager::m_createMipmaps(int rtw, int rth)
 	{
-		// TODO: resize
+		printf("[GSHADERS] Resizing mipmap data\n");
+
+		glDeleteTextures(1, &m_mipmapData[0].Color);
+		for (int i = 0; i < m_mipmapData[0].Sizes.size(); i++)
+			glDeleteFramebuffers(1, &m_mipmapData[0].Sizes[i].FBO);
+		glDeleteTextures(1, &m_mipmapData[1].Color);
+		for (int i = 0; i < m_mipmapData[1].Sizes.size(); i++)
+			glDeleteFramebuffers(1, &m_mipmapData[1].Sizes[i].FBO);
+
 		m_mipmapData[0].Sizes.clear();
 		m_mipmapData[1].Sizes.clear();
 

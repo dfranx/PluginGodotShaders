@@ -78,7 +78,7 @@ namespace gd
 			ImGui::Text("Size: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
 			if (ImGui::DragFloat2("##gsprite_props_size", glm::value_ptr(m_size))) {
-				m_buildMatrix();
+				m_buildVBO();
 				Owner->ModifyProject(Owner->Project);
 			}
 			ImGui::PopItemWidth(); ImGui::Separator();

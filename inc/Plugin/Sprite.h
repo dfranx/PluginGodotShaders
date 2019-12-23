@@ -1,6 +1,7 @@
 #pragma once
 #include <Plugin/Settings.h>
 #include <Plugin/PipelineItem.h>
+#include <Plugin/CanvasVertex.h>
 
 #include <glm/glm.hpp>
 #include <string>
@@ -30,14 +31,7 @@ namespace gd
 			void Draw();
 
 			inline glm::vec4 GetColor() { return m_color; }
-
-			struct Vertex
-			{
-				glm::vec2 Position;
-				glm::vec2 UV;
-				glm::vec4 Color;
-			};
-
+			
 		private:
 			std::string m_texName;
 			unsigned int m_texID; // GLuint texture ID
@@ -51,7 +45,7 @@ namespace gd
 
 			void m_buildVBO();
 			unsigned int m_vbo, m_vao;
-			Vertex m_verts[6];
+			CanvasVertex m_verts[6];
 		};
 	}
 }

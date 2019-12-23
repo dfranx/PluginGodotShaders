@@ -148,18 +148,18 @@ namespace gd
 			glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
 			// vbo data
-			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Sprite::Vertex), m_verts, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(CanvasVertex), m_verts, GL_STATIC_DRAW);
 
 			// position
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)0);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)0);
 			glEnableVertexAttribArray(0);
 
 			// color
-			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)(4 * sizeof(GLfloat)));
+			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(4 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(1);
 
 			// uv
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Sprite::Vertex), (void*)(2 * sizeof(GLfloat)));
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(2 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(2);
 
 			glBindVertexArray(0);

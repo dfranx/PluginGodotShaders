@@ -1,6 +1,7 @@
 ﻿#include "GodotShaders.h"
 #include <Core/ResourceManager.h>
 #include <Core/CanvasMaterial.h>
+#include <Core/BackBufferCopy.h>
 #include <Core/Sprite.h>
 #include <UI/UIHelper.h>
 
@@ -256,6 +257,7 @@ namespace gd
 
 	void GodotShaders::BeginProjectLoading()
 	{
+		m_items.clear();
 		m_loadTextures.clear();
 		m_loadSizes.clear();
 		m_loadUniformTextures.clear();
@@ -336,6 +338,26 @@ namespace gd
 		if (strcmp(name, "pipeline") == 0) {
 			if (ImGui::Selectable("Create " ITEM_NAME_CANVAS_MATERIAL))
 				m_addCanvasMaterial();
+			if (ImGui::Selectable("Create " ITEM_NAME_BACKBUFFERCOPY)) {
+				pipe::BackBufferCopy* data = new pipe::BackBufferCopy();
+				std::string name = "";
+				int i = 0;
+				while (true) {
+					name = "BackBufferCopy" + std::to_string(i);
+					if (!ExistsPipelineItem(PipelineManager, name.c_str()))
+						break;
+					i++;
+				}
+				strcpy(data->Name, name.c_str());
+				data->Items.clear();
+				data->Owner = this;
+
+				// add the item
+				AddCustomPipelineItem(PipelineManager, nullptr, name.c_str(), ITEM_NAME_BACKBUFFERCOPY, data, this);
+
+				printf("Adding %s\n", name.c_str());
+				m_items.push_back(data);
+			}
 		}
 		// plugin item add
 		else if (strcmp(name, "pluginitem_add") == 0) {
@@ -366,7 +388,7 @@ namespace gd
 	bool GodotShaders::HasLastFrame(char* name, ed::plugin::VariableType varType) { return false; }
 	void GodotShaders::UpdateSystemVariableValue(char* data, char* name, ed::plugin::VariableType varType, bool isLastFrame) { }
 
-	// functions (not needed for this plugin)
+	// functions
 	bool GodotShaders::HasVariableFunctions(ed::plugin::VariableType vtype) { return false; }
 	int GodotShaders::GetVariableFunctionNameCount(ed::plugin::VariableType vtype) { return 0; }
 	const char* GodotShaders::GetVariableFunctionName(ed::plugin::VariableType varType, int index) { return nullptr; }
@@ -397,18 +419,16 @@ namespace gd
 	bool GodotShaders::HasPipelineItemProperties(const char* type)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 ||
-			strcmp(type, ITEM_NAME_SPRITE) == 0;
+			strcmp(type, ITEM_NAME_SPRITE) == 0 ||
+			strcmp(type, ITEM_NAME_BACKBUFFERCOPY) == 0;
 	}
 	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
 	{
-		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
-			pipe::CanvasMaterial* item = (pipe::CanvasMaterial*)data;
-			item->ShowProperties();
-		}
-		else if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
-			pipe::Sprite* item = (pipe::Sprite*)data;
-			item->ShowProperties();
-		}
+		PipelineItem* item = (PipelineItem*)data;
+		if (item->Type == PipelineItemType::CanvasMaterial)
+			((pipe::CanvasMaterial*)item)->ShowProperties();
+		else if (item->Type == PipelineItemType::Sprite)
+			((pipe::Sprite*)item)->ShowProperties();
 	}
 	bool GodotShaders::IsPipelineItemPickable(const char* type) { return false; }
 	bool GodotShaders::HasPipelineItemShaders(const char* type)
@@ -535,7 +555,8 @@ namespace gd
 	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) {}
 	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count)
 	{
-		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial)
 		{
 			glDisable(GL_CULL_FACE);
 			glDisable(GL_DEPTH_TEST);
@@ -552,6 +573,10 @@ namespace gd
 
 			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_CULL_FACE);
+		}
+		else if (idata->Type == PipelineItemType::BackBufferCopy)
+		{
+			ResourceManager::Instance().CopiedScreenTexture = false; // just reset the flag -> next shader (if any) that uses SCREEN_TEXTURE will copy the contents
 		}
 	}
 	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float(&pMat)[16]) { }
@@ -644,12 +669,24 @@ namespace gd
 			doc.append_child("height").text().set(spr->GetSize().y);
 			doc.append_child("x").text().set(spr->GetPosition().x);
 			doc.append_child("y").text().set(spr->GetPosition().y);
+			doc.append_child("rotation").text().set(spr->GetRotation());
+			doc.append_child("fliph").text().set(spr->GetFlipHorizontal());
+			doc.append_child("flipv").text().set(spr->GetFlipVertical());
+			doc.append_child("visible").text().set(spr->IsVisible());
+			doc.append_child("color_r").text().set(spr->GetColor().r);
+			doc.append_child("color_g").text().set(spr->GetColor().g);
+			doc.append_child("color_b").text().set(spr->GetColor().b);
+			doc.append_child("color_a").text().set(spr->GetColor().a);
 
 			std::ostringstream oss;
 			doc.print(oss);
 			m_tempXML = oss.str();
 
 			return m_tempXML.c_str();
+		}
+		else if (strcmp(type, ITEM_NAME_BACKBUFFERCOPY) == 0) {
+			pipe::BackBufferCopy* mat = (pipe::BackBufferCopy*)data;
+			return "";
 		}
 
 		return nullptr;
@@ -709,11 +746,28 @@ namespace gd
 			float h = doc.child("height").text().as_float();
 			float x = doc.child("x").text().as_float();
 			float y = doc.child("y").text().as_float();
+			float rota = doc.child("rotation").text().as_float();
+			bool fliph = doc.child("fliph").text().as_bool();
+			bool flipv = doc.child("flipv").text().as_bool();
+			bool visible = doc.child("visible").text().as_bool();
+			float clr_r = doc.child("color_r").text().as_float();
+			float clr_g = doc.child("color_g").text().as_float();
+			float clr_b = doc.child("color_b").text().as_float();
+			float clr_a = doc.child("color_a").text().as_float();
 
 			spr->SetPosition(glm::vec2(x, y));
+			spr->SetRotation(rota);
+			spr->SetFlipHorizontal(fliph);
+			spr->SetFlipVertical(flipv);
+			spr->SetVisible(visible);
+			spr->SetColor(glm::vec4(clr_r, clr_g, clr_b, clr_a));
 
 			m_loadSizes[spr] = glm::vec2(w, h);
 			m_loadTextures[spr] = toGenericPath(doc.child("texture").text().as_string());
+		}
+		else if (strcmp(type, ITEM_NAME_BACKBUFFERCOPY) == 0)
+		{
+			item = new pipe::BackBufferCopy();
 		}
 
 		strcpy(item->Name, name);
@@ -727,53 +781,50 @@ namespace gd
 	}
 	void GodotShaders::MovePipelineItemDown(void* ownerData, const char* ownerType, const char* itemName)
 	{
-		if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
-			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)ownerData;
-			if (strcmp(mat->Name, itemName) == 0) {
-				// move the container up
-				for (int i = 0; i < m_items.size(); i++) {
-					if (strcmp(m_items[i]->Name, itemName) == 0) {
-						PipelineItem* temp = m_items[i];
-						m_items[i] = m_items[i + 1];
-						m_items[i + 1] = temp;
-						break;
-					}
+		PipelineItem* mat = (PipelineItem*)ownerData;
+		if (strcmp(mat->Name, itemName) == 0) {
+			// move the container up
+			for (int i = 0; i < m_items.size(); i++) {
+				if (strcmp(m_items[i]->Name, itemName) == 0) {
+					PipelineItem* temp = m_items[i];
+					m_items[i] = m_items[i + 1];
+					m_items[i + 1] = temp;
+					break;
 				}
-			} else {
-				for (int i = 0; i < mat->Items.size(); i++) {
-					if (strcmp(mat->Items[i]->Name, itemName) == 0) {
-						PipelineItem* temp = mat->Items[i];
-						mat->Items[i] = mat->Items[i + 1];
-						mat->Items[i + 1] = temp;
-						break;
-					}
+			}
+		}
+		else {
+			for (int i = 0; i < mat->Items.size(); i++) {
+				if (strcmp(mat->Items[i]->Name, itemName) == 0) {
+					PipelineItem* temp = mat->Items[i];
+					mat->Items[i] = mat->Items[i + 1];
+					mat->Items[i + 1] = temp;
+					break;
 				}
 			}
 		}
 	}
 	void GodotShaders::MovePipelineItemUp(void* ownerData, const char* ownerType, const char* itemName)
 	{
-		if (strcmp(ownerType, ITEM_NAME_CANVAS_MATERIAL) == 0) {
-			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)ownerData;
-			if (strcmp(mat->Name, itemName) == 0) {
-				// move the container up
-				for (int i = 0; i < m_items.size(); i++) {
-					if (strcmp(m_items[i]->Name, itemName) == 0) {
-						PipelineItem* temp = m_items[i];
-						m_items[i] = m_items[i - 1];
-						m_items[i - 1] = temp;
-						break;
-					}
+		PipelineItem* mat = (PipelineItem*)ownerData;
+		if (strcmp(mat->Name, itemName) == 0) {
+			// move the container up
+			for (int i = 0; i < m_items.size(); i++) {
+				if (strcmp(m_items[i]->Name, itemName) == 0) {
+					PipelineItem* temp = m_items[i];
+					m_items[i] = m_items[i - 1];
+					m_items[i - 1] = temp;
+					break;
 				}
 			}
-			else {
-				for (int i = 0; i < mat->Items.size(); i++) {
-					if (strcmp(mat->Items[i]->Name, itemName) == 0) {
-						PipelineItem* temp = mat->Items[i];
-						mat->Items[i] = mat->Items[i - 1];
-						mat->Items[i - 1] = temp;
-						break;
-					}
+		}
+		else {
+			for (int i = 0; i < mat->Items.size(); i++) {
+				if (strcmp(mat->Items[i]->Name, itemName) == 0) {
+					PipelineItem* temp = mat->Items[i];
+					mat->Items[i] = mat->Items[i - 1];
+					mat->Items[i - 1] = temp;
+					break;
 				}
 			}
 		}

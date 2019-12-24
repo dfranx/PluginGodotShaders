@@ -28,6 +28,10 @@ namespace gd
 			m_texName = "";
 			m_vao = 0;
 			m_vbo = 0;
+			m_rota = 0.0f;
+			m_flipH = false;
+			m_flipV = false;
+			m_visible = true;
 			Type = PipelineItemType::Sprite;
 		}
 		Sprite::~Sprite()
@@ -67,6 +71,8 @@ namespace gd
 			UIHelper::TexturePreview(m_texID);
 			ImGui::Separator();
 
+
+
 			ImGui::Text("Position: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
 			if (ImGui::DragFloat2("##gsprite_props_pos", glm::value_ptr(m_pos))) {
@@ -75,6 +81,8 @@ namespace gd
 			}
 			ImGui::PopItemWidth(); ImGui::Separator();
 
+
+
 			ImGui::Text("Size: "); ImGui::SameLine();
 			ImGui::PushItemWidth(-1);
 			if (ImGui::DragFloat2("##gsprite_props_size", glm::value_ptr(m_size))) {
@@ -82,6 +90,50 @@ namespace gd
 				Owner->ModifyProject(Owner->Project);
 			}
 			ImGui::PopItemWidth(); ImGui::Separator();
+
+
+
+			ImGui::Text("Rotation: "); ImGui::SameLine();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::DragFloat("##gsprite_props_rota", &m_rota)) {
+				m_buildMatrix();
+				Owner->ModifyProject(Owner->Project);
+			}
+			ImGui::PopItemWidth(); ImGui::Separator();
+
+
+
+			ImGui::Text("Color: "); ImGui::SameLine();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::ColorEdit4("##gsprite_props_color", glm::value_ptr(m_color))) {
+				m_buildVBO();
+				Owner->ModifyProject(Owner->Project);
+			}
+			ImGui::PopItemWidth(); ImGui::Separator();
+
+
+
+			ImGui::Text("FlipH: "); ImGui::SameLine();
+			if (ImGui::Checkbox("##gsprite_props_fliph", &m_flipH)) {
+				m_buildVBO();
+				Owner->ModifyProject(Owner->Project);
+			}
+			ImGui::Separator();
+
+
+
+			ImGui::Text("FlipV: "); ImGui::SameLine();
+			if (ImGui::Checkbox("##gsprite_props_flipv", &m_flipV)) {
+				m_buildVBO();
+				Owner->ModifyProject(Owner->Project);
+			}
+			ImGui::Separator();
+
+
+
+			ImGui::Text("Visible: "); ImGui::SameLine();
+			if (ImGui::Checkbox("##gsprite_props_visible", &m_visible))
+				Owner->ModifyProject(Owner->Project);
 		}
 
 		void Sprite::SetTexture(const std::string& texObjName)
@@ -109,13 +161,11 @@ namespace gd
 			m_size = glm::vec2(w,h);
 			m_buildVBO();
 		}
-		void Sprite::SetColor(glm::vec4 clr)
-		{
-			m_color = clr;
-			m_buildVBO();
-		}
 		void Sprite::Draw()
 		{
+			if (!m_visible)
+				return;
+
 			glActiveTexture(GL_TEXTURE0 + 0);
 			glBindTexture(GL_TEXTURE_2D, m_texID);
 
@@ -136,6 +186,13 @@ namespace gd
 				m_verts[i].Position.x *= m_size.x;
 				m_verts[i].Position.y *= m_size.y;
 			}
+
+			if (m_flipH)
+				for (int i = 0; i < 6; i++)
+					m_verts[i].UV.x = 1.0f - m_verts[i].UV.x;
+			if (m_flipV)
+				for (int i = 0; i < 6; i++)
+					m_verts[i].UV.y = 1.0f - m_verts[i].UV.y;
 
 			// create vao
 			if (m_vao == 0)
@@ -170,7 +227,8 @@ namespace gd
 		void Sprite::m_buildMatrix()
 		{
 			glm::vec3 posRect(m_pos.x + m_size.x/2, m_pos.y + m_size.y / 2, -1000.0f);
-			m_matrix = glm::translate(glm::mat4(1), posRect);
+			m_matrix = glm::translate(glm::mat4(1), posRect) * 
+				glm::rotate(glm::mat4(1.0f), glm::radians(m_rota), glm::vec3(0.0f, 0.0f, 1.0f));
 		}
 	}
 }

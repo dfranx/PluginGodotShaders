@@ -1,5 +1,5 @@
 # PluginGodotShaders
-SHADERed plugin that adds support for Godot Shaders. This plugin adds several new pipeline items: CanvasMaterial, Sprite, Quad2D & BackBufferCopy.
+SHADERed plugin that adds support for Godot Shaders. This plugin adds several new pipeline items: CanvasMaterial, Sprite & BackBufferCopy.
 
 ![Screenshot](./screenshot.png)
 
@@ -33,9 +33,12 @@ make
 4. Open the .sln and build the project!
 
 ## How to use
+This plugin requires SHADERed v1.3 minimum.
+
 Copy the .dll/.so file to plugins/GodotShaders in your SHADERed installation directory
 
 ## TODO
 - light shaders
 - shader\_type spatial
 - particle shaders
+- more nodes

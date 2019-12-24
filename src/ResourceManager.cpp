@@ -297,8 +297,6 @@ void main()
 	}
 	void ResourceManager::m_createMipmaps(int rtw, int rth)
 	{
-		printf("[GSHADERS] Resizing mipmap data\n");
-
 		glDeleteTextures(1, &m_mipmapData[0].Color);
 		for (int i = 0; i < m_mipmapData[0].Sizes.size(); i++)
 			glDeleteFramebuffers(1, &m_mipmapData[0].Sizes[i].FBO);

@@ -5,3 +5,4 @@
 
 #define ITEM_NAME_CANVAS_MATERIAL "GCanvasMaterial"
 #define ITEM_NAME_SPRITE "GSprite"
+#define ITEM_NAME_BACKBUFFERCOPY "GBackBufferCopy"

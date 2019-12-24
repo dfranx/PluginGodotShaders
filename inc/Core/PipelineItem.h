@@ -8,7 +8,8 @@ namespace gd
 	enum class PipelineItemType
 	{
 		CanvasMaterial,
-		Sprite
+		Sprite,
+		BackBufferCopy
 	};
 
 	class PipelineItem

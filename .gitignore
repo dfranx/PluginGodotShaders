@@ -1,4 +1,5 @@
 vsproject64/
+vsproject32/
 copy.bat
 CMakeCache.txt
 CMakeFiles/

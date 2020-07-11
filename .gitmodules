@@ -5,6 +5,3 @@
 [submodule "libs/pugixml"]
 	path = libs/pugixml
 	url = https://github.com/zeux/pugixml.git
-[submodule "libs/GodotShaderTranscompiler"]
-	path = libs/GodotShaderTranscompiler
-	url = https://github.com/dfranx/GodotShaderTranscompiler.git

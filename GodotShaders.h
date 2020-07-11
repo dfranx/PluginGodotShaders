@@ -17,122 +17,198 @@
 
 namespace gd
 {
-	class GodotShaders : public ed::IPlugin
+	class GodotShaders : public ed::IPlugin1
 	{
 	public:
-		virtual bool Init();
-		virtual void OnEvent(void* e);
+		virtual bool Init(bool isWeb, int sedVersion);
+		virtual void InitUI(void* ctx);
+		virtual void OnEvent(void* e) { }
 		virtual void Update(float delta);
-		virtual void Destroy();
+		virtual void Destroy() { }
+
+		virtual bool IsRequired() { return true; }
+		virtual bool IsVersionCompatible(int version) { return true; }
 
 		virtual void BeginRender();
-		virtual void EndRender();
+		virtual void EndRender() { }
 
-		virtual void BeginProjectLoading();
-		virtual void EndProjectLoading();
-		virtual void BeginProjectSaving();
-		virtual void EndProjectSaving();
-		virtual void CopyFilesOnSave(const char* dir);
-		virtual bool HasCustomMenu();
+		virtual void Project_BeginLoad();
+		virtual void Project_EndLoad();
+		virtual void Project_BeginSave();
+		virtual void Project_EndSave();
+		virtual bool Project_HasAdditionalData() { return false; }
+		virtual const char* Project_ExportAdditionalData() { return nullptr; }
+		virtual void Project_ImportAdditionalData(const char* xml) {}
+		virtual void Project_CopyFilesOnSave(const char* dir);
 
-		virtual bool HasMenuItems(const char* name);
-		virtual void ShowMenuItems(const char* name);
+		/* list: file, newproject, project, createitem, window, custom */
+		virtual bool HasCustomMenuItem() { return false; }
+		virtual bool HasMenuItems(const char* name) { return false; }
+		virtual void ShowMenuItems(const char* name) {}
 
+		/* list: pipeline, shaderpass_add (owner = ShaderPass), pluginitem_add (owner = char* ItemType, extraData = PluginItemData) objects, editcode (owner = char* ItemName) */
 		virtual bool HasContextItems(const char* name);
 		virtual void ShowContextItems(const char* name, void* owner = nullptr, void* extraData = nullptr);
 
-		// system variables
-		virtual bool HasSystemVariables(ed::plugin::VariableType varType);
-		virtual int GetSystemVariableNameCount(ed::plugin::VariableType varType);
-		virtual const char* GetSystemVariableName(ed::plugin::VariableType varType, int index);
-		virtual bool HasLastFrame(char* name, ed::plugin::VariableType varType);
-		virtual void UpdateSystemVariableValue(char* data, char* name, ed::plugin::VariableType varType, bool isLastFrame);
+		// system variable methods
+		virtual int SystemVariables_GetNameCount(ed::plugin::VariableType varType) { return 0; }
+		virtual const char* SystemVariables_GetName(ed::plugin::VariableType varType, int index) { return 0; }
+		virtual bool SystemVariables_HasLastFrame(char* name, ed::plugin::VariableType varType) { return 0; }
+		virtual void SystemVariables_UpdateValue(char* data, char* name, ed::plugin::VariableType varType, bool isLastFrame) { }
 
-		// functions
-		virtual bool HasVariableFunctions(ed::plugin::VariableType vtype);
-		virtual int GetVariableFunctionNameCount(ed::plugin::VariableType vtype);
-		virtual const char* GetVariableFunctionName(ed::plugin::VariableType varType, int index);
-		virtual bool ShowFunctionArgumentEdit(char* fname, char* args, ed::plugin::VariableType vtype);
-		virtual void UpdateVariableFunctionValue(char* data, char* args, char* fname, ed::plugin::VariableType varType);
-		virtual int GetVariableFunctionArgSpaceSize(char* fname, ed::plugin::VariableType varType);
-		virtual void InitVariableFunctionArguments(char* args, char* fname, ed::plugin::VariableType vtype);
-		virtual const char* ExportFunctionArguments(char* fname, ed::plugin::VariableType vtype, char* args);
-		virtual void ImportFunctionArguments(char* fname, ed::plugin::VariableType vtype, char* args, const char* argsString);
+		// function variables
+		virtual int VariableFunctions_GetNameCount(ed::plugin::VariableType vtype) { return 0; }
+		virtual const char* VariableFunctions_GetName(ed::plugin::VariableType varType, int index) { return 0; }
+		virtual bool VariableFunctions_ShowArgumentEdit(char* fname, char* args, ed::plugin::VariableType vtype) { return 0; }
+		virtual void VariableFunctions_UpdateValue(char* data, char* args, char* fname, ed::plugin::VariableType varType) { }
+		virtual int VariableFunctions_GetArgsSize(char* fname, ed::plugin::VariableType varType) { return 0; }
+		virtual void VariableFunctions_InitArguments(char* args, char* fname, ed::plugin::VariableType vtype) { }
+		virtual const char* VariableFunctions_ExportArguments(char* fname, ed::plugin::VariableType vtype, char* args) { return 0; }
+		virtual void VariableFunctions_ImportArguments(char* fname, ed::plugin::VariableType vtype, char* args, const char* argsString) { }
 
 		// object manager stuff
-		virtual bool HasObjectPreview(const char* type);
-		virtual void ShowObjectPreview(const char* type, void* data, unsigned int id);
-		virtual bool IsObjectBindable(const char* type);
-		virtual bool IsObjectBindableUAV(const char* type);
-		virtual void RemoveObject(const char* name, const char* type, void* data, unsigned int id);
-		virtual bool HasObjectExtendedPreview(const char* type);
-		virtual void ShowObjectExtendedPreview(const char* type, void* data, unsigned int id);
-		virtual bool HasObjectProperties(const char* type);
-		virtual void ShowObjectProperties(const char* type, void* data, unsigned int id);
-		virtual void BindObject(const char* type, void* data, unsigned int id);
-		virtual const char* ExportObject(char* type, void* data, unsigned int id);
-		virtual void ImportObject(const char* name, const char* type, const char* argsString);
-		virtual bool HasObjectContext(const char* type);
-		virtual void ShowObjectContext(const char* type, void* data);
+		virtual bool Object_HasPreview(const char* type) { return 0; }
+		virtual void Object_ShowPreview(const char* type, void* data, unsigned int id) { }
+		virtual bool Object_IsBindable(const char* type) { return 0; }
+		virtual bool Object_IsBindableUAV(const char* type) { return 0; }
+		virtual void Object_Remove(const char* name, const char* type, void* data, unsigned int id) { }
+		virtual bool Object_HasExtendedPreview(const char* type) { return 0; }
+		virtual void Object_ShowExtendedPreview(const char* type, void* data, unsigned int id) { }
+		virtual bool Object_HasProperties(const char* type) { return 0; }
+		virtual void Object_ShowProperties(const char* type, void* data, unsigned int id) { }
+		virtual void Object_Bind(const char* type, void* data, unsigned int id) { }
+		virtual const char* Object_Export(char* type, void* data, unsigned int id) { return 0; }
+		virtual void Object_Import(const char* name, const char* type, const char* argsString) { }
+		virtual bool Object_HasContext(const char* type) { return 0; }
+		virtual void Object_ShowContext(const char* type, void* data) { }
+
 
 		// pipeline item stuff
-		virtual bool HasPipelineItemProperties(const char* type);
-		virtual void ShowPipelineItemProperties(const char* type, void* data);
-		virtual bool IsPipelineItemPickable(const char* type);
-		virtual bool HasPipelineItemShaders(const char* type);
-		virtual void OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data);
-		virtual bool CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType);
-		virtual int GetPipelineItemInputLayoutSize(const char* itemName);
-		virtual void GetPipelineItemInputLayoutItem(const char* itemName, int index, ed::plugin::InputLayoutItem& out);
-		virtual void RemovePipelineItem(const char* itemName, const char* type, void* data);
-		virtual void RenamePipelineItem(const char* oldName, const char* newName);
-		virtual void AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data);
-		virtual bool CanPipelineItemHaveChildren(const char* type);
-		virtual void* CopyPipelineItemData(const char* type, void* data);
-		virtual void ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data);
-		virtual void ExecutePipelineItem(const char* type, void* data, void* children, int count);
-		virtual void GetPipelineItemWorldMatrix(const char* name, float (&pMat)[16]);
-		virtual bool IntersectPipelineItem(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist);
-		virtual void GetPipelineItemBoundingBox(const char* name, float(&minPos)[3], float(&maxPos)[3]);
-		virtual bool HasPipelineItemContext(const char* type);
-		virtual void ShowPipelineItemContext(const char* type, void* data);
-		virtual const char* ExportPipelineItem(const char* type, void* data);
-		virtual void* ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString);
-		virtual void MovePipelineItemDown(void* ownerData, const char* ownerType, const char* itemName);
-		virtual void MovePipelineItemUp(void* ownerData, const char* ownerType, const char* itemName);
+		virtual bool PipelineItem_HasProperties(const char* type, void* data);
+		virtual void PipelineItem_ShowProperties(const char* type, void* data);
+		virtual bool PipelineItem_IsPickable(const char* type, void* data) { return 0; }
+		virtual bool PipelineItem_HasShaders(const char* type, void* data);
+		virtual void PipelineItem_OpenInEditor(const char* type, void* data);
+		virtual bool PipelineItem_CanHaveChild(const char* type, void* data, ed::plugin::PipelineItemType itemType);
+		virtual int PipelineItem_GetInputLayoutSize(const char* type, void* data);
+		virtual void PipelineItem_GetInputLayoutItem(const char* type, void* data, int index, ed::plugin::InputLayoutItem& out);
+		virtual void PipelineItem_Remove(const char* itemName, const char* type, void* data);
+		virtual void PipelineItem_Rename(const char* oldName, const char* newName);
+		virtual void PipelineItem_AddChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data);
+		virtual bool PipelineItem_CanHaveChildren(const char* type, void* data);
+		virtual void* PipelineItem_CopyData(const char* type, void* data);
+		virtual void PipelineItem_Execute(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) { }
+		virtual void PipelineItem_Execute(const char* type, void* data, void* children, int count);
+		virtual void PipelineItem_GetWorldMatrix(const char* type, void* data, float(&pMat)[16]) { }
+		virtual bool PipelineItem_Intersect(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) { return 0; }
+		virtual void PipelineItem_GetBoundingBox(const char* type, void* data, float(&minPos)[3], float(&maxPos)[3]) { }
+		virtual bool PipelineItem_HasContext(const char* type, void* data);
+		virtual void PipelineItem_ShowContext(const char* type, void* data);
+		virtual const char* PipelineItem_Export(const char* type, void* data);
+		virtual void* PipelineItem_Import(const char* ownerName, const char* name, const char* type, const char* argsString);
+		virtual void PipelineItem_MoveDown(void* ownerData, const char* ownerType, const char* itemName);
+		virtual void PipelineItem_MoveUp(void* ownerData, const char* ownerType, const char* itemName);
+		virtual void PipelineItem_ApplyGizmoTransform(const char* type, void* data, float* transl, float* scale, float* rota) { }
+		virtual void PipelineItem_GetTransform(const char* type, void* data, float* transl, float* scale, float* rota) { }
+		virtual void PipelineItem_DebugVertexExecute(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data, unsigned int colorVarLoc) { }
+		virtual int PipelineItem_DebugVertexExecute(const char* type, void* data, const char* childName, float rx, float ry, int vertexGroup);
+		virtual void PipelineItem_DebugInstanceExecute(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data, unsigned int colorVarLoc) { }
+		virtual int PipelineItem_DebugInstanceExecute(const char* type, void* data, const char* childName, float rx, float ry, int vertexGroup);
+		virtual unsigned int PipelineItem_GetVBO(const char* type, void* data);
+		virtual unsigned int PipelineItem_GetVBOStride(const char* type, void* data);
+		virtual bool PipelineItem_CanChangeVariables(const char* type, void* data) { return 0; }
+		virtual bool PipelineItem_IsDebuggable(const char* type, void* data);
+		virtual bool PipelineItem_IsStageDebuggable(const char* type, void* data, ed::plugin::ShaderStage stage);
+		virtual void PipelineItem_DebugExecute(const char* type, void* data, void* children, int count, int* debugID);
+		virtual unsigned int PipelineItem_GetTopology(const char* type, void* data);
+		virtual unsigned int PipelineItem_GetVariableCount(const char* type, void* data);
+		virtual const char* PipelineItem_GetVariableName(const char* type, void* data, unsigned int variable);
+		virtual ed::plugin::VariableType PipelineItem_GetVariableType(const char* type, void* data, unsigned int variable);
+		virtual float PipelineItem_GetVariableValueFloat(const char* type, void* data, unsigned int variable, int col, int row);
+		virtual int PipelineItem_GetVariableValueInteger(const char* type, void* data, unsigned int variable, int col);
+		virtual bool PipelineItem_GetVariableValueBoolean(const char* type, void* data, unsigned int variable, int col);
+		virtual unsigned int PipelineItem_GetSPIRVSize(const char* type, void* data, ed::plugin::ShaderStage stage);
+		virtual unsigned int* PipelineItem_GetSPIRV(const char* type, void* data, ed::plugin::ShaderStage stage);
+		virtual void PipelineItem_DebugPrepareVariables(const char* type, void* data, const char* name);
+		virtual bool PipelineItem_DebugUsesCustomTextures(const char* type, void* data);
+		virtual unsigned int PipelineItem_DebugGetTexture(const char* type, void* data, int loc, const char* variableName);
+		virtual void PipelineItem_DebugGetTextureSize(const char* type, void* data, int loc, const char* variableName, int& x, int& y, int& z);
 
 		// options
-		virtual bool HasSectionInOptions();
-		virtual void ShowOptions();
+		virtual bool Options_HasSection() { return false; }
+		virtual void Options_RenderSection() { }
+		virtual void Options_Parse(const char* key, const char* val) { }
+		virtual int Options_GetCount() { return 0; }
+		virtual const char* Options_GetKey(int index) { return 0; }
+		virtual const char* Options_GetValue(int index) { return 0; }
+
+		// languages
+		virtual int CustomLanguage_GetCount() { return 0; }
+		virtual const char* CustomLanguage_GetName(int langID) { return 0; }
+		virtual const unsigned int* CustomLanguage_CompileToSPIRV(int langID, const char* src, size_t src_len, ed::plugin::ShaderStage stage, const char* entry, ed::plugin::ShaderMacro* macros, size_t macroCount, size_t* spv_length, bool* compiled) { return 0; }
+		virtual const char* CustomLanguage_ProcessGeneratedGLSL(int langID, const char* src) { return 0; }
+		virtual bool CustomLanguage_SupportsAutoUniforms(int langID) { return 0; }
+		virtual bool CustomLanguage_IsDebuggable(int langID) { return 0; }
+		virtual const char* CustomLanguage_GetDefaultExtension(int langID) { return 0; }
+
+		// language text editor
+		virtual bool ShaderEditor_Supports(int langID) { return 0; }
+		virtual void ShaderEditor_Open(int langID, int editorID, const char* data, int dataLen) { }
+		virtual void ShaderEditor_Render(int langID, int editorID) { }
+		virtual void ShaderEditor_Close(int langID, int editorID) { }
+		virtual const char* ShaderEditor_GetContent(int langID, int editorID, size_t* dataLength) { return 0; }
+		virtual bool ShaderEditor_IsChanged(int langID, int editorID) { return 0; }
+		virtual void ShaderEditor_ResetChangeState(int langID, int editorID) { }
+		virtual bool ShaderEditor_CanUndo(int langID, int editorID) { return 0; }
+		virtual bool ShaderEditor_CanRedo(int langID, int editorID) { return 0; }
+		virtual void ShaderEditor_Undo(int langID, int editorID) { }
+		virtual void ShaderEditor_Redo(int langID, int editorID) { }
+		virtual void ShaderEditor_Cut(int langID, int editorID) { }
+		virtual void ShaderEditor_Paste(int langID, int editorID) { }
+		virtual void ShaderEditor_Copy(int langID, int editorID) { }
+		virtual void ShaderEditor_SelectAll(int langID, int editorID) { }
+		virtual bool ShaderEditor_HasStats(int langID, int editorID) { return 0; }
 
 		// code editor
-		virtual void SaveCodeEditorItem(const char* src, int srcLen, int sid);
-		virtual void CloseCodeEditorItem(int sid);
-		virtual int GetLanguageDefinitionKeywordCount(int sid);
-		virtual const char** GetLanguageDefinitionKeywords(int sid);
-		virtual int GetLanguageDefinitionTokenRegexCount(int sid);
-		virtual const char* GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid);
-		virtual int GetLanguageDefinitionIdentifierCount(int sid);
-		virtual const char* GetLanguageDefinitionIdentifier(int index, int sid);
-		virtual const char* GetLanguageDefinitionIdentifierDesc(int index, int sid);
-		virtual const char* GetLanguageDefinitionCommentStart(int sid);
-		virtual const char* GetLanguageDefinitionCommentEnd(int sid);
-		virtual const char* GetLanguageDefinitionLineComment(int sid);
-		virtual bool IsLanguageDefinitionCaseSensitive(int sid);
-		virtual bool GetLanguageDefinitionAutoIndent(int sid);
-		virtual const char* GetLanguageDefinitionName(int sid);
-		virtual const char* GetLanguageAbbreviation(int id);
+		virtual void CodeEditor_SaveItem(const char* src, int srcLen, int id);
+		virtual void CodeEditor_CloseItem(int id);
+		virtual bool LanguageDefinition_Exists(int id) { return true; }
+		virtual int LanguageDefinition_GetKeywordCount(int id);
+		virtual const char** LanguageDefinition_GetKeywords(int id);
+		virtual int LanguageDefinition_GetTokenRegexCount(int id);
+		virtual const char* LanguageDefinition_GetTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int id);
+		virtual int LanguageDefinition_GetIdentifierCount(int id);
+		virtual const char* LanguageDefinition_GetIdentifier(int index, int id);
+		virtual const char* LanguageDefinition_GetIdentifierDesc(int index, int id);
+		virtual const char* LanguageDefinition_GetCommentStart(int id);
+		virtual const char* LanguageDefinition_GetCommentEnd(int id);
+		virtual const char* LanguageDefinition_GetLineComment(int id);
+		virtual bool LanguageDefinition_IsCaseSensitive(int id);
+		virtual bool LanguageDefinition_GetAutoIndent(int id);
+		virtual const char* LanguageDefinition_GetName(int id);
+		virtual const char* LanguageDefinition_GetNameAbbreviation(int id);
+
+		// autocomplete
+		virtual int Autocomplete_GetCount(ed::plugin::ShaderStage stage) { return 0; }
+		virtual const char* Autocomplete_GetDisplayString(ed::plugin::ShaderStage stage, int index) { return 0; }
+		virtual const char* Autocomplete_GetSearchString(ed::plugin::ShaderStage stage, int index) { return 0; }
+		virtual const char* Autocomplete_GetValue(ed::plugin::ShaderStage stage, int index) { return 0; }
+
+		// file change checks
+		virtual int ShaderFilePath_GetCount();
+		virtual const char* ShaderFilePath_Get(int index);
+		virtual bool ShaderFilePath_HasChanged();
+		virtual void ShaderFilePath_Update();
 
 		// misc
-		virtual bool HandleDropFile(const char* filename);
+		virtual bool HandleDropFile(const char* filename) { return 0; }
 		virtual void HandleRecompile(const char* itemName);
 		virtual void HandleRecompileFromSource(const char* itemName, int sid, const char* shaderCode, int shaderSize);
-		virtual int GetShaderFilePathCount();
-		virtual const char* GetShaderFilePath(int index);
-		virtual bool HasShaderFilePathChanged();
-		virtual void UpdateShaderFilePath();
+		virtual void HandleShortcut(const char* name) { }
+		virtual void HandlePluginMessage(const char* sender, char* msg, int msgLen) { }
+		virtual void HandleApplicationEvent(ed::plugin::ApplicationEvent event, void* data1, void* data2);
+		virtual void HandleNotification(int id) { }
 
-		inline unsigned int GetFBO() { return m_fbo; }
 		inline unsigned int GetColorBuffer() { return GetWindowColorTexture(Renderer); }
 
 		bool ShaderPathsUpdated;
@@ -140,7 +216,13 @@ namespace gd
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
 
+		void m_bindFBO(pipe::CanvasMaterial* canvas);
+
 		float m_lastErrorCheck;
+
+		void* m_dbgEditor;
+		unsigned int m_dbgTextureID;
+		std::string m_dbgTexture;
 
 		bool m_varManagerOpened;
 				
@@ -155,13 +237,15 @@ namespace gd
 		std::vector<int> m_editorID;
 		int m_editorCurrentID;
 
+		std::unordered_map<GLuint, bool> m_isRTCleared;
+
 		glm::vec2 m_rtSize, m_lastSize;
 		glm::vec4 m_clearColor;
-		GLuint m_fbo;
 
 		PipelineItem* m_popupItem;
 		
 		std::string m_tempXML;
+		std::unordered_map<pipe::CanvasMaterial*, std::string> m_loadRTs;
 		std::unordered_map<pipe::Sprite*, std::string> m_loadTextures;
 		std::unordered_map<pipe::Sprite*, glm::vec2> m_loadSizes;
 		std::unordered_map<std::string, std::pair<PipelineItem*, std::string>> m_loadUniformTextures;

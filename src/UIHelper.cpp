@@ -2,7 +2,6 @@
 
 #include <clocale>
 #include <Core/ResourceManager.h>
-#include <nativefiledialog/nfd.h>
 #include <imgui/imgui.h>
 
 #include <GL/glew.h>
@@ -16,52 +15,6 @@
 
 namespace gd
 {
-	bool UIHelper::GetOpenDirectoryDialog(std::string& outPath)
-	{
-		nfdchar_t* path = NULL;
-		nfdresult_t result = NFD_PickFolder(NULL, &path);
-		setlocale(LC_ALL, "C");
-
-		outPath = "";
-		if (result == NFD_OKAY) {
-			outPath = std::string(path);
-			return true;
-		}
-		else if (result == NFD_ERROR) { /* TODO: log */ }
-
-		return false;
-	}
-	bool UIHelper::GetOpenFileDialog(std::string& outPath, const std::string& files)
-	{
-		nfdchar_t *path = NULL;
-		nfdresult_t result = NFD_OpenDialog(NULL, NULL, &path );
-		setlocale(LC_ALL,"C");
-
-		outPath = "";
-		if (result == NFD_OKAY) {
-			outPath = std::string(path);
-			return true;
-		}
-		else if (result == NFD_ERROR) { /* TODO: log */ }
-
-		return false;
-	}
-	bool UIHelper::GetSaveFileDialog(std::string& outPath, const std::string& files)
-	{
-		nfdchar_t *path = NULL;
-		nfdresult_t result = NFD_SaveDialog(files.size() == 0 ? NULL : files.c_str(), NULL, &path );
-		setlocale(LC_ALL,"C");
-
-		outPath = "";
-		if (result == NFD_OKAY) {
-			outPath = std::string(path);
-			return true;
-		}
-		else if (result == NFD_ERROR) { /* TODO: log */ }
-
-		return false;
-	}
-
 	void UIHelper::TexturePreview(unsigned int tex, float w, float h)
 	{
 		ImGui::Image((ImTextureID)tex, ImVec2(TEXTURE_PREVIEW_WIDTH, (h/w) * TEXTURE_PREVIEW_WIDTH));
@@ -78,7 +31,7 @@ namespace gd
 		ImGui::Image((ImTextureID)tex, ImVec2(TEXTURE_PREVIEW_WIDTH, ((float)h / w) * TEXTURE_PREVIEW_WIDTH));
 	}
 
-	bool UIHelper::ShowValueEditor(ed::IPlugin* owner, const std::string& name, Uniform& u)
+	bool UIHelper::ShowValueEditor(ed::IPlugin1* owner, const std::string& name, Uniform& u)
 	{
 		bool ret = false;
 		switch (u.Type)
@@ -176,6 +129,12 @@ namespace gd
 							break;
 						}
 					}
+					else if (owner->IsRenderTexture(owner->ObjectManager, oname)) {
+						if (u.Value[0].uint == owner->GetTexture(owner->ObjectManager, oname)) {
+							filename = oname;
+							break;
+						}
+					}
 				}
 			}
 
@@ -190,10 +149,14 @@ namespace gd
 
 				for (int i = 0; i < ocnt; i++) {
 					const char* oname = owner->GetObjectName(owner->ObjectManager, i);
-					if (owner->IsTexture(owner->ObjectManager, oname)) {
-						if (ImGui::Selectable(UIHelper::TrimFilename(oname).c_str())) {
+					bool isRT = owner->IsRenderTexture(owner->ObjectManager, oname);
+					if (owner->IsTexture(owner->ObjectManager, oname) || isRT) {
+						if (ImGui::Selectable(isRT ? oname : UIHelper::TrimFilename(oname).c_str())) {
 							ret = true;
-							u.Value[0].uint = owner->GetFlippedTexture(owner->ObjectManager, oname);
+							if (isRT)
+								u.Value[0].uint = owner->GetTexture(owner->ObjectManager, oname);
+							else
+								u.Value[0].uint = owner->GetFlippedTexture(owner->ObjectManager, oname);
 						}
 					}
 				}

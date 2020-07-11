@@ -1,5 +1,6 @@
 #include <Core/CanvasMaterial.h>
 #include <Core/ResourceManager.h>
+#include <Core/ShaderCompiler.h>
 #include <PluginAPI/Plugin.h>
 #include <UI/UIHelper.h>
 #include "../GodotShaders.h"
@@ -22,6 +23,18 @@
 #endif
 
 #define BUTTON_SPACE_LEFT -40 * Owner->GetDPI()
+
+static const char* PixelDebugShaderCode = R"(
+#version 330
+
+uniform vec4 _sed_dbg_pixel_color;
+out vec4 outColor;
+
+void main()
+{
+	outColor = _sed_dbg_pixel_color;
+}
+)";
 
 std::string LoadFile(const std::string& file)
 {
@@ -49,11 +62,26 @@ namespace gd
 			m_modelMat = m_projMat = glm::mat4(1.0f);
 			m_uniforms.clear();
 			m_glslData.BlendMode = Shader::CanvasItem::BLEND_MODE_ADD;
+			m_rtName = "";
+			m_rt = m_fbo = 0;
 		}
 		CanvasMaterial::~CanvasMaterial()
 		{
 			if (m_shader != 0)
 				glDeleteShader(m_shader);
+		}
+		void CanvasMaterial::SetRenderTexture(const std::string& rtName, unsigned int rt, unsigned int depth)
+		{
+			m_rtName = rtName;
+			m_rt = rt;
+
+			if (m_fbo != 0)
+				glDeleteFramebuffers(1, &m_fbo);
+			glGenFramebuffers(1, &m_fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt, 0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 		void CanvasMaterial::SetViewportSize(float w, float h)
 		{
@@ -63,17 +91,21 @@ namespace gd
 		}
 		void CanvasMaterial::Bind()
 		{
+			m_isDebug = false;
+
 			// bind shaders
 			if (!m_glslData.Error && m_glslData.SCREEN_TEXTURE)
 			{
-				ResourceManager::Instance().Copy(((gd::GodotShaders*)Owner)->GetColorBuffer(), ((gd::GodotShaders*)Owner)->GetFBO());
+				ResourceManager::Instance().Copy(((gd::GodotShaders*)Owner)->GetColorBuffer(), m_fbo);
 
 				glUseProgram(m_shader);
 				glActiveTexture(GL_TEXTURE0 + 1);
 				glBindTexture(GL_TEXTURE_2D, ResourceManager::Instance().SCREEN_TEXTURE());
-				glUniform1i(glGetUniformLocation(m_shader, "screen_texture"), 1);
+				glUniform1i(glGetUniformLocation(m_shader, "SCREEN_TEXTURE"), 1);
 
 				glUniform2f(m_pixelSizeLoc, 1.0f / m_vw, 1.0f/m_vh);
+
+				
 			}
 
 			glUseProgram(m_shader);
@@ -83,63 +115,9 @@ namespace gd
 			if (m_glslData.TIME)
 				glUniform1f(m_timeLoc, Owner->GetTime());
 
-			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0);
+			glUniform1i(glGetUniformLocation(m_shader, "TEXTURE"), 0);
 
-			for (const auto& uniform : m_uniforms) {
-				const auto& val = uniform.second.Value;
-				const auto& loc = uniform.second.Location;
-				switch (uniform.second.Type) {
-				case ShaderLanguage::TYPE_BOOL: glUniform1i(loc, val[0].sint); break;
-				case ShaderLanguage::TYPE_BVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
-				case ShaderLanguage::TYPE_BVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
-				case ShaderLanguage::TYPE_BVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
-				case ShaderLanguage::TYPE_INT: glUniform1i(loc, val[0].sint); break;
-				case ShaderLanguage::TYPE_IVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
-				case ShaderLanguage::TYPE_IVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
-				case ShaderLanguage::TYPE_IVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
-				case ShaderLanguage::TYPE_UINT: glUniform1ui(loc, val[0].uint); break;
-				case ShaderLanguage::TYPE_UVEC2: glUniform2ui(loc, val[0].uint, val[1].uint); break;
-				case ShaderLanguage::TYPE_UVEC3: glUniform3ui(loc, val[0].uint, val[1].uint, val[2].uint); break;
-				case ShaderLanguage::TYPE_UVEC4: glUniform4ui(loc, val[0].uint, val[1].uint, val[2].uint, val[3].uint); break;
-				case ShaderLanguage::TYPE_FLOAT: glUniform1f(loc, val[0].real); break;
-				case ShaderLanguage::TYPE_VEC2: glUniform2f(loc, val[0].real, val[1].real); break;
-				case ShaderLanguage::TYPE_VEC3: glUniform3f(loc, val[0].real, val[1].real, val[2].real); break;
-				case ShaderLanguage::TYPE_VEC4: glUniform4f(loc, val[0].real, val[1].real, val[2].real, val[3].real); break;
-				case ShaderLanguage::TYPE_MAT2: glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
-				case ShaderLanguage::TYPE_MAT3: glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
-				case ShaderLanguage::TYPE_MAT4: glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
-				case ShaderLanguage::TYPE_SAMPLER2D:
-					glActiveTexture(GL_TEXTURE0 + loc);
-					glBindTexture(GL_TEXTURE_2D, val[0].uint);
-					glUniform1i(glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str()), loc);
-					break;
-				}
-			}
-
-			if (m_glslData.BlendMode == Shader::CanvasItem::BLEND_MODE_DISABLED) {
-				glDisable(GL_BLEND);
-			} else {
-				glEnable(GL_BLEND);
-				switch (m_glslData.BlendMode) {
-					//-1 not handled because not blend is enabled anyway
-				case Shader::CanvasItem::BLEND_MODE_MIX: {
-					glBlendEquation(GL_FUNC_ADD);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				} break;
-				case Shader::CanvasItem::BLEND_MODE_ADD: {
-					glBlendEquation(GL_FUNC_ADD);
-					glBlendFunc(GL_ONE, GL_ONE);
-				} break;
-				case Shader::CanvasItem::BLEND_MODE_SUB: {
-					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-				} break;
-				case Shader::CanvasItem::BLEND_MODE_MUL: {
-					glBlendEquation(GL_FUNC_ADD);
-					glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ZERO, GL_ONE);
-				} break;
-				}
-			}
+			m_bindUniforms();
 		}
 		void CanvasMaterial::ShowProperties()
 		{
@@ -152,21 +130,22 @@ namespace gd
 				isColumnWidthSet = true;
 			}
 
+
 			/* shader path */
 			ImGui::Text("Shader:");
 			ImGui::NextColumn();
-
 			ImGui::PushItemWidth(BUTTON_SPACE_LEFT);
 			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::InputText("##pui_vspath", ShaderPath, MAX_PATH_LENGTH);
+			ImGui::InputText("##pui_spath", ShaderPath, MAX_PATH_LENGTH);
 			ImGui::PopItemFlag();
 			ImGui::PopItemWidth();
 			ImGui::SameLine();
-			if (ImGui::Button("...##pui_vsbtn", ImVec2(-1, 0))) {
-				std::string file = "";
-				bool success = UIHelper::GetOpenFileDialog(file);
+			if (ImGui::Button("...##pui_sbtn", ImVec2(-1, 0))) {
+				char filePtr[512] = { 0 };
+				bool success = Owner->GetOpenFileDialog(filePtr, nullptr);
+				std::string file(filePtr);
 				if (success) {
-					char tempFile[MAX_PATH_LENGTH];
+					char tempFile[MAX_PATH_LENGTH] = { 0 };
 					Owner->GetRelativePath(Owner->Project, file.c_str(), tempFile);
 					file = std::string(tempFile);
 
@@ -186,6 +165,36 @@ namespace gd
 			ImGui::NextColumn();
 
 
+
+			ImGui::Text("Render texture:");
+			ImGui::NextColumn();
+			ImGui::PushItemWidth(-1);
+			if (ImGui::BeginCombo("##godot_canvas_rt", m_rtName.empty() ? "Window" : m_rtName.c_str())) {
+				if (ImGui::Selectable("Window")) {
+					SetRenderTexture("", Owner->GetWindowColorTexture(Owner->Renderer), Owner->GetWindowDepthTexture(Owner->Renderer));
+					Owner->ModifyProject(Owner->Project);
+				}
+				ImGui::Separator();
+
+				int ocnt = Owner->GetObjectCount(Owner->ObjectManager);
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = Owner->GetObjectName(Owner->ObjectManager, i);
+					if (Owner->IsRenderTexture(Owner->ObjectManager, oname)) {
+						if (ImGui::Selectable(oname)) {
+							GLuint rt = Owner->GetTexture(Owner->ObjectManager, oname);
+							GLuint depth = Owner->GetDepthTexture(Owner->ObjectManager, oname);
+							SetRenderTexture(oname, rt, depth);
+							Owner->ModifyProject(Owner->Project);
+						}
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+			ImGui::PopItemWidth();
+			ImGui::NextColumn();
+
+
 			ImGui::Columns(1);
 		}
 		void CanvasMaterial::ShowVariableEditor()
@@ -201,6 +210,9 @@ namespace gd
 			
 			ImGui::Separator();
 			for (auto& u : m_uniforms) {
+				if (u.second.UIHidden)
+					continue;
+
 				ImGui::Text("%s", u.first.c_str());
 				ImGui::NextColumn();
 
@@ -216,20 +228,43 @@ namespace gd
 			ImGui::Columns(1);
 		}
 
+		void CanvasMaterial::DebugBind()
+		{
+			m_isDebug = true;
+
+			// bind shader
+			glUseProgram(m_debugShader);
+			glUniformMatrix4fv(m_debugProjMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_projMat));
+			if (m_glslData.TIME) glUniform1f(m_debugTimeLoc, Owner->GetTime());
+			glUniform1i(glGetUniformLocation(m_debugShader, "TEXTURE"), 0);
+
+			m_bindUniforms();
+		}
+		void CanvasMaterial::DebugSetID(int debugID)
+		{
+			float r = (debugID & 0x000000FF) / 255.0f;
+			float g = ((debugID & 0x0000FF00) >> 8) / 255.0f;
+			float b = ((debugID & 0x00FF0000) >> 16) / 255.0f;
+			float a = 1.0f;
+			GLuint dbgPxColor = glGetUniformLocation(m_debugShader, "_sed_dbg_pixel_color");
+
+			glUniform4f(dbgPxColor, r, g, b, a);
+		}
+
 		void CanvasMaterial::SetModelMatrix(glm::mat4 mat)
 		{
 			m_modelMat = mat;
 
+			GLuint loc = m_modelMatrixLoc;
+			if (m_isDebug) loc = m_debugModelMatrixLoc;
+
 			if (m_glslData.SkipVertexTransform)
-				glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1000.0f))));
+				glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1000.0f))));
 			else
-				glUniformMatrix4fv(m_modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
+				glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(m_modelMat));
 		}
 		void CanvasMaterial::Compile()
 		{
-			std::string vsCodeContent = ResourceManager::Instance().GetDefaultCanvasVertexShader();
-			std::string psCodeContent = ResourceManager::Instance().GetDefaultCanvasPixelShader();
-
 			std::string godotShaderContents = "";
 
 			if (strlen(ShaderPath) != 0) {
@@ -255,7 +290,6 @@ namespace gd
 
 			if (filesize != 0 && filedata != nullptr) {
 				gd::ShaderTranscompiler::Transcompile(filedata, m_glslData);
-
 				if (!m_glslData.Error) {
 					vsCodeContent = m_glslData.Vertex;
 					psCodeContent = m_glslData.Fragment;
@@ -296,7 +330,7 @@ namespace gd
 				Owner->Log(infoLog, true, nullptr, -1);
 			}
 
-			// create a shader program for gizmo
+			// create a shader program
 			m_shader = glCreateProgram();
 			glAttachShader(m_shader, canvasVS);
 			glAttachShader(m_shader, canvasPS);
@@ -308,22 +342,44 @@ namespace gd
 				Owner->Log(infoLog, true, nullptr, -1);
 			}
 
-			//glDeleteShader(canvasPS);
-			//glDeleteShader(canvasVS);
+			// create debug pixel shader
+			unsigned int debugPS = glCreateShader(GL_FRAGMENT_SHADER);
+			glShaderSource(debugPS, 1, &PixelDebugShaderCode, nullptr);
+			glCompileShader(debugPS);
 
-			m_projMatrixLoc = glGetUniformLocation(m_shader, "projection_matrix");
-			m_modelMatrixLoc = glGetUniformLocation(m_shader, "modelview_matrix");
-			m_timeLoc = glGetUniformLocation(m_shader, "time");
-			m_pixelSizeLoc = glGetUniformLocation(m_shader, "screen_pixel_size");
+			// create debug shader program
+			m_debugShader = glCreateProgram();
+			glAttachShader(m_debugShader, canvasVS);
+			glAttachShader(m_debugShader, debugPS);
+			glLinkProgram(m_debugShader);
 
-			glUniform1i(glGetUniformLocation(m_shader, "color_texture"), 0); // color_texture -> texunit: 0
-			
+			glDeleteShader(debugPS);
+			glDeleteShader(canvasPS);
+			glDeleteShader(canvasVS);
+
+			gd::ShaderCompiler::CompileSourceToSPIRV(this->VSSPV, vsCodeContent, ed::plugin::ShaderStage::Vertex, "main");
+			gd::ShaderCompiler::CompileSourceToSPIRV(this->PSSPV, psCodeContent, ed::plugin::ShaderStage::Pixel, "main");
+
+			m_projMatrixLoc = glGetUniformLocation(m_shader, "PROJECTION_MATRIX");
+			m_modelMatrixLoc = glGetUniformLocation(m_shader, "WORLD_MATRIX");
+			m_timeLoc = glGetUniformLocation(m_shader, "TIME");
+			m_pixelSizeLoc = glGetUniformLocation(m_shader, "SCREEN_PIXEL_SIZE");
+
+			m_debugProjMatrixLoc = glGetUniformLocation(m_debugShader, "PROJECTION_MATRIX");
+			m_debugModelMatrixLoc = glGetUniformLocation(m_debugShader, "WORLD_MATRIX");
+			m_debugTimeLoc = glGetUniformLocation(m_debugShader, "TIME");
+			m_debugPixelSizeLoc = glGetUniformLocation(m_debugShader, "SCREEN_PIXEL_SIZE");
+
+			glUniform1i(glGetUniformLocation(m_shader, "TEXTURE"), 0); // color_texture -> texunit: 0
+			glUniform1i(glGetUniformLocation(m_debugShader, "TEXTURE"), 0); // color_texture -> texunit: 0
+
 
 			// user uniforms
 			for (const auto& uniform : m_glslData.Uniforms) {
 				Uniform* u = &m_uniforms[uniform.first];
 
-				u->Location = glGetUniformLocation(m_shader, ("m_" + uniform.first).c_str());
+				u->Location = glGetUniformLocation(m_shader, (/*"m_" + */uniform.first).c_str());
+				u->DebugLocation = glGetUniformLocation(m_debugShader, (/*"m_" + */uniform.first).c_str());
 
 				if (u->Type != uniform.second.type && u->Type != ShaderLanguage::TYPE_VOID)
 					u->Value.resize(0);
@@ -389,6 +445,100 @@ namespace gd
 
 			for (const auto& uniform : toBeErased)
 				m_uniforms.erase(uniform);
+		}
+
+		void CanvasMaterial::UpdateUniforms()
+		{
+			std::vector<ShaderLanguage::ConstantNode::Value> scrnPxSize(2), projMat(16), modelMat(16);
+
+			scrnPxSize[0].real = 1.0f / m_vw;
+			scrnPxSize[1].real = 1.0f / m_vh;
+
+			for (int c = 0; c < 4; c++)
+				for (int r = 0; r < 4; r++) {
+					projMat[r * 4 + c].real = m_projMat[r][c];
+					modelMat[r * 4 + c].real = m_modelMat[r][c];
+				}
+
+			m_uniforms["SCREEN_PIXEL_SIZE"].UIHidden = true;
+			m_uniforms["SCREEN_PIXEL_SIZE"].Type = ShaderLanguage::DataType::TYPE_VEC2;
+			m_uniforms["SCREEN_PIXEL_SIZE"].Value = scrnPxSize;
+
+			m_uniforms["PROJECTION_MATRIX"].UIHidden = true;
+			m_uniforms["PROJECTION_MATRIX"].Type = ShaderLanguage::DataType::TYPE_MAT4;
+			m_uniforms["PROJECTION_MATRIX"].Value = projMat;
+
+			m_uniforms["WORLD_MATRIX"].UIHidden = true;
+			m_uniforms["WORLD_MATRIX"].Type = ShaderLanguage::DataType::TYPE_MAT4;
+			m_uniforms["WORLD_MATRIX"].Value = modelMat;
+
+			m_uniforms["TIME"].UIHidden = true;
+			m_uniforms["TIME"].Type = ShaderLanguage::DataType::TYPE_FLOAT;
+			m_uniforms["TIME"].Value.resize(1);
+			m_uniforms["TIME"].Value[0].real = Owner->GetTime();
+		}
+
+		void CanvasMaterial::m_bindUniforms()
+		{
+			for (const auto& uniform : m_uniforms) {
+				const auto& val = uniform.second.Value;
+				
+				unsigned int loc = uniform.second.Location;
+				if (m_isDebug) loc = uniform.second.DebugLocation;
+
+				switch (uniform.second.Type) {
+				case ShaderLanguage::TYPE_BOOL: glUniform1i(loc, val[0].sint); break;
+				case ShaderLanguage::TYPE_BVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
+				case ShaderLanguage::TYPE_BVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
+				case ShaderLanguage::TYPE_BVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
+				case ShaderLanguage::TYPE_INT: glUniform1i(loc, val[0].sint); break;
+				case ShaderLanguage::TYPE_IVEC2: glUniform2i(loc, val[0].sint, val[1].sint); break;
+				case ShaderLanguage::TYPE_IVEC3: glUniform3i(loc, val[0].sint, val[1].sint, val[2].sint); break;
+				case ShaderLanguage::TYPE_IVEC4: glUniform4i(loc, val[0].sint, val[1].sint, val[2].sint, val[3].sint); break;
+				case ShaderLanguage::TYPE_UINT: glUniform1ui(loc, val[0].uint); break;
+				case ShaderLanguage::TYPE_UVEC2: glUniform2ui(loc, val[0].uint, val[1].uint); break;
+				case ShaderLanguage::TYPE_UVEC3: glUniform3ui(loc, val[0].uint, val[1].uint, val[2].uint); break;
+				case ShaderLanguage::TYPE_UVEC4: glUniform4ui(loc, val[0].uint, val[1].uint, val[2].uint, val[3].uint); break;
+				case ShaderLanguage::TYPE_FLOAT: glUniform1f(loc, val[0].real); break;
+				case ShaderLanguage::TYPE_VEC2: glUniform2f(loc, val[0].real, val[1].real); break;
+				case ShaderLanguage::TYPE_VEC3: glUniform3f(loc, val[0].real, val[1].real, val[2].real); break;
+				case ShaderLanguage::TYPE_VEC4: glUniform4f(loc, val[0].real, val[1].real, val[2].real, val[3].real); break;
+				case ShaderLanguage::TYPE_MAT2: glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_MAT3: glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_MAT4: glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&val[0]); break;
+				case ShaderLanguage::TYPE_SAMPLER2D:
+					glActiveTexture(GL_TEXTURE0 + loc);
+					glBindTexture(GL_TEXTURE_2D, val[0].uint);
+					glUniform1i(glGetUniformLocation(m_shader, (/*"m_" + */uniform.first).c_str()), loc);
+					break;
+				}
+			}
+
+			if (m_glslData.BlendMode == Shader::CanvasItem::BLEND_MODE_DISABLED) {
+				glDisable(GL_BLEND);
+			}
+			else {
+				glEnable(GL_BLEND);
+				switch (m_glslData.BlendMode) {
+					//-1 not handled because not blend is enabled anyway
+				case Shader::CanvasItem::BLEND_MODE_MIX: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_ADD: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFunc(GL_ONE, GL_ONE);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_SUB: {
+					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				} break;
+				case Shader::CanvasItem::BLEND_MODE_MUL: {
+					glBlendEquation(GL_FUNC_ADD);
+					glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ZERO, GL_ONE);
+				} break;
+				}
+			}
 		}
 	}
 }

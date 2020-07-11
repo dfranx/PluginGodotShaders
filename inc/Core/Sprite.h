@@ -34,6 +34,9 @@ namespace gd
 			inline glm::vec4 GetColor() { return m_color; }
 			inline bool IsVisible() { return m_visible; }
 			inline float GetRotation() { return m_rota; }
+			inline unsigned int GetVBO() { return m_vbo; }
+			inline unsigned int GetVAO() { return m_vao; }
+			inline unsigned int GetTextureID() { return m_texID; }
 
 			void ShowProperties();
 

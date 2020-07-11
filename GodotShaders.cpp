@@ -10,11 +10,12 @@
 #include <sstream>
 #include <fstream>
 #include <string.h>
+#include <algorithm>
+#include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui/imgui.h>
 #include <pugixml/src/pugixml.hpp>
-#include <ghc/filesystem.hpp>
-
+#include <glslang/Public/ShaderLang.h>
 
 static const GLenum fboBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7, GL_COLOR_ATTACHMENT8, GL_COLOR_ATTACHMENT9, GL_COLOR_ATTACHMENT10, GL_COLOR_ATTACHMENT11, GL_COLOR_ATTACHMENT12, GL_COLOR_ATTACHMENT13, GL_COLOR_ATTACHMENT14, GL_COLOR_ATTACHMENT15 };
 
@@ -63,11 +64,59 @@ namespace gd
 
 		return ret.count(name)>0 ? ret[name] : ShaderLanguage::TYPE_VOID;
 	}
+	ed::plugin::VariableType convertGodotType(ShaderLanguage::DataType dtype)
+	{
+		switch (dtype) {
+		case ShaderLanguage::DataType::TYPE_BOOL: return ed::plugin::VariableType::Boolean1; break;
+		case ShaderLanguage::DataType::TYPE_BVEC2: return ed::plugin::VariableType::Boolean2; break;
+		case ShaderLanguage::DataType::TYPE_BVEC3: return ed::plugin::VariableType::Boolean3; break;
+		case ShaderLanguage::DataType::TYPE_BVEC4: return ed::plugin::VariableType::Boolean4; break;
+		case ShaderLanguage::DataType::TYPE_INT: return ed::plugin::VariableType::Integer1; break;
+		case ShaderLanguage::DataType::TYPE_IVEC2: return ed::plugin::VariableType::Integer2; break;
+		case ShaderLanguage::DataType::TYPE_IVEC3: return ed::plugin::VariableType::Integer3; break;
+		case ShaderLanguage::DataType::TYPE_IVEC4: return ed::plugin::VariableType::Integer4; break;
+		case ShaderLanguage::DataType::TYPE_FLOAT: return ed::plugin::VariableType::Float1; break;
+		case ShaderLanguage::DataType::TYPE_VEC2: return ed::plugin::VariableType::Float2; break;
+		case ShaderLanguage::DataType::TYPE_VEC3: return ed::plugin::VariableType::Float3; break;
+		case ShaderLanguage::DataType::TYPE_VEC4: return ed::plugin::VariableType::Float4; break;
+		case ShaderLanguage::DataType::TYPE_MAT2: return ed::plugin::VariableType::Float2x2; break;
+		case ShaderLanguage::DataType::TYPE_MAT3: return ed::plugin::VariableType::Float3x3; break;
+		case ShaderLanguage::DataType::TYPE_MAT4: return ed::plugin::VariableType::Float4x4; break;
+		}
+		return ed::plugin::VariableType::Integer1;
+	}
+	void DebugDrawPrimitives(int vertexStart, int vertexCount, int maxVertexCount, int vertexStrip, GLuint topology, pipe::CanvasMaterial* canvas)
+	{
+		int actualVertexCount = vertexCount;
+		while (vertexStart < maxVertexCount) {
+			canvas->DebugSetID(vertexStart);
+
+			actualVertexCount = std::min<int>(vertexCount, maxVertexCount - vertexStart);
+			if (actualVertexCount <= 0) break;
+
+			glDrawArrays(topology, vertexStart, actualVertexCount);
+			vertexStart += vertexCount - vertexStrip;
+		}
+	}
+	uint8_t* GetRawPixel(GLuint rt, uint8_t* data, int x, int y, int width)
+	{
+		glBindTexture(GL_TEXTURE_2D, rt);
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		return &data[(x + y * width) * 4];
+	}
+	uint32_t GetPixelID(GLuint rt, uint8_t* data, int x, int y, int width)
+	{
+		uint8_t* pxData = GetRawPixel(rt, data, x, y, width);
+		return ((uint32_t)pxData[0] << 0) | ((uint32_t)pxData[1] << 8) | ((uint32_t)pxData[2] << 16) | ((uint32_t)pxData[3] << 24);
+	}
 
 	void GodotShaders::m_addCanvasMaterial()
 	{
 		// initialize the data
 		pipe::CanvasMaterial* data = new pipe::CanvasMaterial();
+
+		data->SetRenderTexture("", GetWindowColorTexture(Renderer), GetWindowDepthTexture(Renderer));
 
 		// generate name
 		std::string name = "Material";
@@ -115,11 +164,30 @@ namespace gd
 		data->SetTexture(tex);
 	}
 
-	bool GodotShaders::Init()
+	void GodotShaders::m_bindFBO(pipe::CanvasMaterial* canvas)
+	{
+		// bind fbo and buffers
+		glBindFramebuffer(GL_FRAMEBUFFER, canvas->GetFBO());
+		glDrawBuffers(1, fboBuffers);
+
+		// update viewport value
+		glViewport(0, 0, canvas->GetViewportSize().x, canvas->GetViewportSize().y);
+	
+		if (m_isRTCleared.count(canvas->GetRenderTexture()) == 0 || !m_isRTCleared[canvas->GetRenderTexture()]) {
+			glStencilMask(0xFFFFFFFF);
+			glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
+
+			// bind RTs
+			glClearBufferfv(GL_COLOR, 0, glm::value_ptr(m_clearColor));
+
+			m_isRTCleared[canvas->GetRenderTexture()] = true;
+		}
+	}
+
+	bool GodotShaders::Init(bool isWeb, int sedVersion)
 	{
 		m_createSpritePopup = false;
 		m_clearColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		m_fbo = 0;
 		m_lastSize = glm::vec2(1, 1);
 		ShaderPathsUpdated = false;
 		m_varManagerOpened = false;
@@ -127,9 +195,14 @@ namespace gd
 		m_lastErrorCheck = 0.0f;
 		m_buildLangDefinition();
 
+		glslang::InitializeProcess();
+
 		return true;
 	}
-	void GodotShaders::OnEvent(void* e) { }
+	void GodotShaders::InitUI(void* ctx)
+	{
+		ImGui::SetCurrentContext((ImGuiContext*)ctx);
+	}
 	void GodotShaders::Update(float delta)
 	{
 		if (GetTime() - m_lastErrorCheck > 0.75f) {
@@ -137,7 +210,8 @@ namespace gd
 			if (m_items.size() > 0) {
 				int pipeCount = GetPipelineItemCount(PipelineManager);
 				for (int i = 0; i < pipeCount; i++) {
-					ed::plugin::PipelineItemType type = GetPipelineItemType(PipelineManager, i);
+					void* pItem = GetPipelineItemByIndex(PipelineManager, i);
+					ed::plugin::PipelineItemType type = GetPipelineItemType(pItem);
 
 					if (type != ed::plugin::PipelineItemType::PluginItem)
 						AddMessage(Messages, ed::plugin::MessageType::Error, "[GodotShaders]", "Not allowed to use ShaderPass alongside Godot's materials.", 0);
@@ -207,8 +281,7 @@ namespace gd
 			ImGui::EndPopup();
 		}
 	}
-	void GodotShaders::Destroy() { }
-
+	
 	void GodotShaders::BeginRender()
 	{
 		ResourceManager::Instance().CopiedScreenTexture = false;
@@ -220,55 +293,50 @@ namespace gd
 			// update SCREEN_TEXTURE
 			ResourceManager::Instance().ResizeResources(m_lastSize.x, m_lastSize.y);
 
-			// create a FBO
-			if (m_fbo == 0) {
-				glGenFramebuffers(1, &m_fbo);
-				glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GetWindowColorTexture(Renderer), 0);
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, GetWindowDepthTexture(Renderer), 0);
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			}
-
 			// update canvas materials
 			for (int i = 0; i < m_items.size(); i++) {
 				if (m_items[i]->Type == PipelineItemType::CanvasMaterial) {
 					pipe::CanvasMaterial* data = (pipe::CanvasMaterial*)m_items[i];
-					data->SetViewportSize(m_rtSize.x, m_rtSize.y);
+					
+					if (data->GetRenderTextureName().empty())
+						data->SetViewportSize(m_rtSize.x, m_rtSize.y);
+					else {
+						int w = 1, h = 1;
+						GetRenderTextureSize(ObjectManager, data->GetRenderTextureName().c_str(), w, h);
+						data->SetViewportSize(w, h);
+					}
 				}
 			}
 		}
 
-		// bind fbo and buffers
-		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-		glDrawBuffers(1, fboBuffers);
-
-		glStencilMask(0xFFFFFFFF);
-		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
-
-		// bind RTs
-		glClearBufferfv(GL_COLOR, 0, glm::value_ptr(m_clearColor));
-
-		// update viewport value
-		glViewport(0, 0, m_rtSize.x, m_rtSize.y);
+		for (auto& state : m_isRTCleared)
+			state.second = false;
 	}
-	void GodotShaders::EndRender()
-	{
-	}
-
-	void GodotShaders::BeginProjectLoading()
+	
+	void GodotShaders::Project_BeginLoad()
 	{
 		m_items.clear();
 		m_loadTextures.clear();
 		m_loadSizes.clear();
 		m_loadUniformTextures.clear();
+		m_loadRTs.clear();
 	}
-	void GodotShaders::EndProjectLoading()
+	void GodotShaders::Project_EndLoad()
 	{
 		for (auto& k : m_loadTextures)
 			k.first->SetTexture(k.second);
 		for (auto& k : m_loadSizes)
 			k.first->SetSize(k.second);
 
+		for (auto& rt : m_loadRTs) {
+			if (rt.second.empty())
+				rt.first->SetRenderTexture("", GetWindowColorTexture(Renderer), GetWindowDepthTexture(Renderer));
+			else {
+				unsigned int rtID = GetTexture(ObjectManager, rt.second.c_str());
+				unsigned int depthID = GetDepthTexture(ObjectManager, rt.second.c_str());
+				rt.first->SetRenderTexture(rt.second, rtID, depthID);
+			}
+		}
 
 		for (auto& k : m_loadUniformTextures) {
 			std::vector<ShaderLanguage::ConstantNode::Value> value;
@@ -276,8 +344,14 @@ namespace gd
 			if (k.second.second.empty())
 				aval.uint = ResourceManager::Instance().WhiteTexture;
 			else {
-				std::string txt = toGenericPath(k.second.second);
-				aval.uint = GetFlippedTexture(ObjectManager, txt.c_str());
+				if (IsRenderTexture(ObjectManager, k.second.second.c_str())) {
+					std::string txt = k.second.second;
+					aval.uint = GetTexture(ObjectManager, txt.c_str());
+				}
+				else {
+					std::string txt = toGenericPath(k.second.second);
+					aval.uint = GetFlippedTexture(ObjectManager, txt.c_str());
+				}
 			}
 			value.push_back(aval);
 			((pipe::CanvasMaterial*)k.second.first)->SetUniform(k.first, value);
@@ -292,15 +366,15 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::BeginProjectSaving()
+	void GodotShaders::Project_BeginSave()
 	{
 		m_saveRequestedCopy = false;
 	}
-	void GodotShaders::EndProjectSaving()
+	void GodotShaders::Project_EndSave()
 	{
 
 	}
-	void GodotShaders::CopyFilesOnSave(const char* dir)
+	void GodotShaders::Project_CopyFilesOnSave(const char* dir)
 	{
 		m_saveRequestedCopy = true;
 
@@ -308,8 +382,8 @@ namespace gd
 		printf("[GSHADERS] Copying to %s\n", ppath.c_str());
 
 
-		if (!ghc::filesystem::exists(ppath))
-			ghc::filesystem::create_directories(ppath);
+		if (!std::filesystem::exists(ppath))
+			std::filesystem::create_directories(ppath);
 
 		char sPath[MAX_PATH_LENGTH];
 		std::error_code errc;
@@ -318,15 +392,11 @@ namespace gd
 			if (item->Type == PipelineItemType::CanvasMaterial) {
 				pipe::CanvasMaterial* data = (pipe::CanvasMaterial*)item;
 				GetProjectPath(Project, data->ShaderPath, sPath);
-				ghc::filesystem::copy_file(sPath, ppath + std::string(item->Name) + ".shader", ghc::filesystem::copy_options::overwrite_existing, errc);
+				std::filesystem::copy_file(sPath, ppath + std::string(item->Name) + ".shader", std::filesystem::copy_options::overwrite_existing, errc);
 			}
 		}
 	}
-	bool GodotShaders::HasCustomMenu() { return false; }
-
-	bool GodotShaders::HasMenuItems(const char* name) { return false; }
-	void GodotShaders::ShowMenuItems(const char* name) { }
-
+	
 	bool GodotShaders::HasContextItems(const char* name)
 	{
 		return strcmp(name, "pipeline") == 0 || strcmp(name, "pluginitem_add") == 0 ||
@@ -355,7 +425,6 @@ namespace gd
 				// add the item
 				AddCustomPipelineItem(PipelineManager, nullptr, name.c_str(), ITEM_NAME_BACKBUFFERCOPY, data, this);
 
-				printf("Adding %s\n", name.c_str());
 				m_items.push_back(data);
 			}
 		}
@@ -373,7 +442,7 @@ namespace gd
 		else if (strcmp(name, "editcode") == 0) {
 			if (ImGui::Selectable("Shader")) {
 				pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)owner;
-				OpenInCodeEditor(CodeEditor, GetPipelineItem(PipelineManager, odata->Name), odata->ShaderPath, m_editorCurrentID);
+				OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, odata->Name), odata->ShaderPath, m_editorCurrentID);
 				m_editorID.push_back(m_editorCurrentID);
 				m_editorOpened.push_back(odata->ShaderPath);
 				m_editorCurrentID++;
@@ -381,48 +450,14 @@ namespace gd
 		}
 	}
 
-	// system variables (not needed for this plugin)
-	bool GodotShaders::HasSystemVariables(ed::plugin::VariableType varType) { return false; }
-	int GodotShaders::GetSystemVariableNameCount(ed::plugin::VariableType varType) { return 0; }
-	const char* GodotShaders::GetSystemVariableName(ed::plugin::VariableType varType, int index) { return nullptr; }
-	bool GodotShaders::HasLastFrame(char* name, ed::plugin::VariableType varType) { return false; }
-	void GodotShaders::UpdateSystemVariableValue(char* data, char* name, ed::plugin::VariableType varType, bool isLastFrame) { }
-
-	// functions
-	bool GodotShaders::HasVariableFunctions(ed::plugin::VariableType vtype) { return false; }
-	int GodotShaders::GetVariableFunctionNameCount(ed::plugin::VariableType vtype) { return 0; }
-	const char* GodotShaders::GetVariableFunctionName(ed::plugin::VariableType varType, int index) { return nullptr; }
-	bool GodotShaders::ShowFunctionArgumentEdit(char* fname, char* args, ed::plugin::VariableType vtype) { return false; }
-	void GodotShaders::UpdateVariableFunctionValue(char* data, char* args, char* fname, ed::plugin::VariableType varType) { }
-	int GodotShaders::GetVariableFunctionArgSpaceSize(char* fname, ed::plugin::VariableType varType) { return 0; }
-	void GodotShaders::InitVariableFunctionArguments(char* args, char* fname, ed::plugin::VariableType vtype) { }
-	const char* GodotShaders::ExportFunctionArguments(char* fname, ed::plugin::VariableType vtype, char* args) { return nullptr; }
-	void GodotShaders::ImportFunctionArguments(char* fname, ed::plugin::VariableType vtype, char* args, const char* argsString) { }
-
-	// object manager stuff
-	bool GodotShaders::HasObjectPreview(const char* type) { return false; }
-	void GodotShaders::ShowObjectPreview(const char* type, void* data, unsigned int id) { }
-	bool GodotShaders::IsObjectBindable(const char* type) { return false; }
-	bool GodotShaders::IsObjectBindableUAV(const char* type) { return false; }
-	void GodotShaders::RemoveObject(const char* name, const char* type, void* data, unsigned int id) { }
-	bool GodotShaders::HasObjectExtendedPreview(const char* type) { return false; }
-	void GodotShaders::ShowObjectExtendedPreview(const char* type, void* data, unsigned int id) { }
-	bool GodotShaders::HasObjectProperties(const char* type) { return false; }
-	void GodotShaders::ShowObjectProperties(const char* type, void* data, unsigned int id) { }
-	void GodotShaders::BindObject(const char* type, void* data, unsigned int id) { }
-	const char* GodotShaders::ExportObject(char* type, void* data, unsigned int id) { return nullptr; }
-	void GodotShaders::ImportObject(const char* name, const char* type, const char* argsString) { }
-	bool GodotShaders::HasObjectContext(const char* type) { return false; }
-	void GodotShaders::ShowObjectContext(const char* type, void* data) { }
-
 	// pipeline item stuff
-	bool GodotShaders::HasPipelineItemProperties(const char* type)
+	bool GodotShaders::PipelineItem_HasProperties(const char* type, void* data)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 ||
 			strcmp(type, ITEM_NAME_SPRITE) == 0 ||
 			strcmp(type, ITEM_NAME_BACKBUFFERCOPY) == 0;
 	}
-	void GodotShaders::ShowPipelineItemProperties(const char* type, void* data)
+	void GodotShaders::PipelineItem_ShowProperties(const char* type, void* data)
 	{
 		PipelineItem* item = (PipelineItem*)data;
 		if (item->Type == PipelineItemType::CanvasMaterial)
@@ -430,16 +465,15 @@ namespace gd
 		else if (item->Type == PipelineItemType::Sprite)
 			((pipe::Sprite*)item)->ShowProperties();
 	}
-	bool GodotShaders::IsPipelineItemPickable(const char* type) { return false; }
-	bool GodotShaders::HasPipelineItemShaders(const char* type)
+	bool GodotShaders::PipelineItem_HasShaders(const char* type, void* data)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
-	void GodotShaders::OpenPipelineItemInEditor(void* CodeEditor, const char* type, void* data)
+	void GodotShaders::PipelineItem_OpenInEditor(const char* type, void* data)
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)data;
-			OpenInCodeEditor(CodeEditor, GetPipelineItem(PipelineManager, mat->Name), mat->ShaderPath, m_editorCurrentID);
+			OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, mat->Name), mat->ShaderPath, m_editorCurrentID);
 			m_editorID.push_back(m_editorCurrentID);
 			m_editorOpened.push_back(mat->ShaderPath);
 			m_editorCurrentID++;
@@ -447,14 +481,25 @@ namespace gd
 			printf("[GSHADERS] Opened %s's shader.\n", mat->Name);
 		}
 	}
-	bool GodotShaders::CanPipelineItemHaveChild(const char* type, ed::plugin::PipelineItemType itemType)
+	bool GodotShaders::PipelineItem_CanHaveChild(const char* type, void* data, ed::plugin::PipelineItemType itemType)
 	{
 		// only allow GItems
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0 && itemType == ed::plugin::PipelineItemType::PluginItem;
 	}
-	int GodotShaders::GetPipelineItemInputLayoutSize(const char* itemName) { return 0; }
-	void GodotShaders::GetPipelineItemInputLayoutItem(const char* itemName, int index, ed::plugin::InputLayoutItem& out) { }
-	void GodotShaders::RemovePipelineItem(const char* itemName, const char* type, void* data)
+	int GodotShaders::PipelineItem_GetInputLayoutSize(const char* type, void* data)
+	{
+		return 3;
+	}
+	void GodotShaders::PipelineItem_GetInputLayoutItem(const char* type, void* data, int index, ed::plugin::InputLayoutItem& out)
+	{
+		if (index == 0)
+			out.Value = ed::plugin::InputLayoutValue::Position;
+		else if (index == 1)
+			out.Value = ed::plugin::InputLayoutValue::Texcoord;
+		else
+			out.Value = ed::plugin::InputLayoutValue::Color;
+	}
+	void GodotShaders::PipelineItem_Remove(const char* itemName, const char* type, void* data)
 	{
 		// delete allocated data
 		for (size_t i = 0; i < m_items.size(); i++) {
@@ -491,7 +536,7 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::RenamePipelineItem(const char* oldName, const char* newName)
+	void GodotShaders::PipelineItem_Rename(const char* oldName, const char* newName)
 	{
 		// update our local copy of pipeline items
 		for (size_t i = 0; i < m_items.size(); i++) {
@@ -521,7 +566,7 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::AddPipelineItemChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data)
+	void GodotShaders::PipelineItem_AddChild(const char* owner, const char* name, ed::plugin::PipelineItemType type, void* data)
 	{
 		for (int i = 0; i < m_items.size(); i++)
 			if (strcmp(m_items[i]->Name, owner) == 0) {
@@ -530,11 +575,11 @@ namespace gd
 				break;
 			}
 	}
-	bool GodotShaders::CanPipelineItemHaveChildren(const char* type)
+	bool GodotShaders::PipelineItem_CanHaveChildren(const char* type, void* data)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
-	void* GodotShaders::CopyPipelineItemData(const char* type, void* data)
+	void* GodotShaders::PipelineItem_CopyData(const char* type, void* data)
 	{
 		if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
 			gd::pipe::Sprite* idata = (gd::pipe::Sprite*)data;
@@ -552,8 +597,7 @@ namespace gd
 		}
 		return nullptr;
 	}
-	void GodotShaders::ExecutePipelineItem(void* Owner, ed::plugin::PipelineItemType OwnerType, const char* type, void* data) {}
-	void GodotShaders::ExecutePipelineItem(const char* type, void* data, void* children, int count)
+	void GodotShaders::PipelineItem_Execute(const char* type, void* data, void* children, int count)
 	{
 		PipelineItem* idata = (PipelineItem*)data;
 		if (idata->Type == PipelineItemType::CanvasMaterial)
@@ -562,6 +606,7 @@ namespace gd
 			glDisable(GL_DEPTH_TEST);
 
 			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			m_bindFBO(odata);
 			odata->Bind();
 			for (PipelineItem* item : odata->Items) {
 				if (item->Type == PipelineItemType::Sprite) {
@@ -579,14 +624,70 @@ namespace gd
 			ResourceManager::Instance().CopiedScreenTexture = false; // just reset the flag -> next shader (if any) that uses SCREEN_TEXTURE will copy the contents
 		}
 	}
-	void GodotShaders::GetPipelineItemWorldMatrix(const char* name, float(&pMat)[16]) { }
-	bool GodotShaders::IntersectPipelineItem(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) { return false; }
-	void GodotShaders::GetPipelineItemBoundingBox(const char* name, float(&minPos)[3], float(&maxPos)[3]) { }
-	bool GodotShaders::HasPipelineItemContext(const char* type)
+	int GodotShaders::PipelineItem_DebugVertexExecute(const char* type, void* data, const char* childName, float rx, float ry, int vertexGroup)
+	{
+		if (vertexGroup == -1) {
+			PipelineItem* idata = (PipelineItem*)data;
+			if (idata->Type == PipelineItemType::CanvasMaterial)
+			{
+				glDisable(GL_CULL_FACE);
+				glDisable(GL_DEPTH_TEST);
+
+				pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+				m_bindFBO(odata);
+				odata->DebugBind();
+				for (PipelineItem* item : odata->Items) {
+					if (strcmp(item->Name, childName) != 0)
+						continue;
+
+					if (item->Type == PipelineItemType::Sprite) {
+						pipe::Sprite* sprite = (pipe::Sprite*)item;
+						odata->SetModelMatrix(sprite->GetMatrix());
+
+						glBindVertexArray(sprite->GetVAO());
+						DebugDrawPrimitives(0, 3, 6, 0, GL_TRIANGLES, odata);
+					}
+				}
+
+				glEnable(GL_DEPTH_TEST);
+				glEnable(GL_CULL_FACE);
+
+
+				// window pixel color
+				glm::vec2 rtSize = odata->GetViewportSize();
+				int x = rx * rtSize.x;
+				int y = ry * rtSize.y;
+				uint8_t* mainPixelData = new uint8_t[(int)(rtSize.x * rtSize.y) * 4];
+				int id = 0x00ffffff & GetPixelID(odata->GetRenderTexture(), mainPixelData, x, y, rtSize.x);
+				delete[] mainPixelData;
+
+				return id;
+			}
+		}
+		return vertexGroup; // since there won't be many vertices, we can fetch vertex id in the first pass
+	}
+	int GodotShaders::PipelineItem_DebugInstanceExecute(const char* type, void* data, const char* childName, float rx, float ry, int vertexGroup)
+	{
+		return 0;
+	}
+	unsigned int GodotShaders::PipelineItem_GetVBO(const char* type, void* data)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::Sprite) {
+			pipe::Sprite* odata = (pipe::Sprite*)data;
+			return odata->GetVBO();
+		}
+		return 0;
+	}
+	unsigned int GodotShaders::PipelineItem_GetVBOStride(const char* type, void* data)
+	{
+		return 9;
+	}
+	bool GodotShaders::PipelineItem_HasContext(const char* type, void* data)
 	{
 		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
 	}
-	void GodotShaders::ShowPipelineItemContext(const char* type, void* data)
+	void GodotShaders::PipelineItem_ShowContext(const char* type, void* data)
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0)
 		{
@@ -602,7 +703,7 @@ namespace gd
 			}
 		}
 	}
-	const char* GodotShaders::ExportPipelineItem(const char* type, void* data)
+	const char* GodotShaders::PipelineItem_Export(const char* type, void* data)
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)data;
@@ -619,6 +720,9 @@ namespace gd
 
 			doc.append_child("path").text().set(actualPath.c_str());
 
+			if (!mat->GetRenderTextureName().empty())
+				doc.append_child("render_texture").text().set(mat->GetRenderTextureName().c_str());
+
 			pugi::xml_node uniformsNode = doc.append_child("uniforms");
 
 			const auto& uniforms = mat->GetUniforms();
@@ -633,6 +737,12 @@ namespace gd
 						const char* oname = GetObjectName(ObjectManager, i);
 						if (IsTexture(ObjectManager, oname)) {
 							if (u.second.Value[0].uint == GetFlippedTexture(ObjectManager, oname)) {
+								uniformNode.append_child("value").text().set(oname);
+								break;
+							}
+						}
+						else if (IsRenderTexture(ObjectManager, oname)) {
+							if (u.second.Value[0].uint == GetTexture(ObjectManager, oname)) {
 								uniformNode.append_child("value").text().set(oname);
 								break;
 							}
@@ -691,7 +801,7 @@ namespace gd
 
 		return nullptr;
 	}
-	void* GodotShaders::ImportPipelineItem(const char* ownerName, const char* name, const char* type, const char* argsString)
+	void* GodotShaders::PipelineItem_Import(const char* ownerName, const char* name, const char* type, const char* argsString)
 	{
 		pugi::xml_document doc;
 		doc.load_string(argsString);
@@ -735,7 +845,13 @@ namespace gd
 				}
 			}
 
-			
+			if (doc.child("render_texture")) {
+				std::string rtName(doc.child("render_texture").text().get());
+				m_loadRTs[mat] = rtName;
+			}
+			else
+				m_loadRTs[mat] = "";
+
 			printf("[GSHADERS] Loading CanvasMaterial\n");
 		}
 		else if (strcmp(type, ITEM_NAME_SPRITE) == 0) {
@@ -779,7 +895,7 @@ namespace gd
 
 		return (void*)item;
 	}
-	void GodotShaders::MovePipelineItemDown(void* ownerData, const char* ownerType, const char* itemName)
+	void GodotShaders::PipelineItem_MoveDown(void* ownerData, const char* ownerType, const char* itemName)
 	{
 		PipelineItem* mat = (PipelineItem*)ownerData;
 		if (strcmp(mat->Name, itemName) == 0) {
@@ -804,7 +920,7 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::MovePipelineItemUp(void* ownerData, const char* ownerType, const char* itemName)
+	void GodotShaders::PipelineItem_MoveUp(void* ownerData, const char* ownerType, const char* itemName)
 	{
 		PipelineItem* mat = (PipelineItem*)ownerData;
 		if (strcmp(mat->Name, itemName) == 0) {
@@ -829,10 +945,259 @@ namespace gd
 			}
 		}
 	}
+	bool GodotShaders::PipelineItem_IsDebuggable(const char* type, void* data)
+	{
+		return strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0;
+	}
+	bool GodotShaders::PipelineItem_IsStageDebuggable(const char* type, void* data, ed::plugin::ShaderStage stage)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial)
+		{
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			if (stage == ed::plugin::ShaderStage::Pixel)
+				return odata->IsFragmentShaderUsed();
+			else if (stage == ed::plugin::ShaderStage::Vertex)
+				return odata->IsVertexShaderUsed();
+		}
+		return false;
+	}
+	void GodotShaders::PipelineItem_DebugExecute(const char* type, void* data, void* children, int count, int* debugID)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial)
+		{
+			glDisable(GL_CULL_FACE);
+			glDisable(GL_DEPTH_TEST);
 
-	// options
-	bool GodotShaders::HasSectionInOptions() { return false; }
-	void GodotShaders::ShowOptions() { }
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			m_bindFBO(odata);
+			odata->DebugBind();
+			for (PipelineItem* item : odata->Items) {
+				if (item->Type == PipelineItemType::Sprite) {
+					odata->DebugSetID(*debugID);
+
+					pipe::Sprite* sprite = (pipe::Sprite*)item;
+					odata->SetModelMatrix(sprite->GetMatrix());
+					sprite->Draw();
+					(*debugID)++;
+				}
+			}
+
+			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_CULL_FACE);
+		}
+	}
+	unsigned int GodotShaders::PipelineItem_GetTopology(const char* type, void* data)
+	{
+		return GL_TRIANGLES;
+	}
+	unsigned int GodotShaders::PipelineItem_GetVariableCount(const char* type, void* data)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			return odata->GetUniforms().size();
+		}
+		return 0;
+	}
+	const char* GodotShaders::PipelineItem_GetVariableName(const char* type, void* data, unsigned int variable)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			int i = 0;
+			for (const auto& pair : odata->GetUniforms()) {
+				if (i == variable)
+					return pair.first.c_str();
+				i++;
+			}
+		}
+		return nullptr;
+	}
+	ed::plugin::VariableType GodotShaders::PipelineItem_GetVariableType(const char* type, void* data, unsigned int variable)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			int i = 0;
+			for (const auto& pair : odata->GetUniforms()) {
+				if (i == variable)
+					return convertGodotType(pair.second.Type);
+				i++;
+			}
+		}
+		return ed::plugin::VariableType::Integer1;
+	}
+	float GodotShaders::PipelineItem_GetVariableValueFloat(const char* type, void* data, unsigned int variable, int col, int row)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			int i = 0;
+			for (const auto& pair : odata->GetUniforms()) {
+				if (i == variable) {
+					int stride = 4;
+					if (pair.second.Type == ShaderLanguage::DataType::TYPE_MAT2)
+						stride = 2;
+					if (pair.second.Type == ShaderLanguage::DataType::TYPE_MAT3)
+						stride = 3;
+					return pair.second.Value[row * stride + col].real;
+				}
+				i++;
+			}
+		}
+		return 0.0f;
+	}
+	int GodotShaders::PipelineItem_GetVariableValueInteger(const char* type, void* data, unsigned int variable, int col)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			int i = 0;
+			for (const auto& pair : odata->GetUniforms()) {
+				if (i == variable)
+					return pair.second.Value[col].sint;
+				i++;
+			}
+		}
+		return 0;
+	}
+	bool GodotShaders::PipelineItem_GetVariableValueBoolean(const char* type, void* data, unsigned int variable, int col)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+
+			int i = 0;
+			for (const auto& pair : odata->GetUniforms()) {
+				if (i == variable)
+					return pair.second.Value[col].boolean;
+				i++;
+			}
+		}
+		return 0;
+	}
+	unsigned int GodotShaders::PipelineItem_GetSPIRVSize(const char* type, void* data, ed::plugin::ShaderStage stage)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			if (stage == ed::plugin::ShaderStage::Pixel)
+				return odata->PSSPV.size();
+			else
+				return odata->VSSPV.size();
+		}
+		return 0;
+	}
+	unsigned int* GodotShaders::PipelineItem_GetSPIRV(const char* type, void* data, ed::plugin::ShaderStage stage)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial) {
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			if (stage == ed::plugin::ShaderStage::Pixel)
+				return odata->PSSPV.data();
+			else
+				return odata->VSSPV.data();
+		}
+		return 0;
+	}
+	void GodotShaders::PipelineItem_DebugPrepareVariables(const char* type, void* data, const char* name)
+	{
+		PipelineItem* idata = (PipelineItem*)data;
+		if (idata->Type == PipelineItemType::CanvasMaterial)
+		{
+			pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+			for (PipelineItem* item : odata->Items) {
+				if (strcmp(item->Name, name) != 0)
+					continue;
+
+				if (item->Type == PipelineItemType::Sprite) {
+					pipe::Sprite* sprite = (pipe::Sprite*)item;
+					odata->SetModelMatrix(sprite->GetMatrix());
+					m_dbgTextureID = sprite->GetTextureID();
+					m_dbgTexture = sprite->GetTexture();
+					break;
+				}
+			}
+
+			odata->UpdateUniforms();
+		}
+	}
+	bool GodotShaders::PipelineItem_DebugUsesCustomTextures(const char* type, void* data)
+	{
+		return true;
+	}
+	unsigned int GodotShaders::PipelineItem_DebugGetTexture(const char* type, void* data, int loc, const char* variableName)
+	{
+		if (variableName != nullptr) {
+			if (strcmp(variableName, "TEXTURE") == 0)
+				return m_dbgTextureID;
+			else if (strcmp(variableName, "SCREEN_TEXTURE") == 0)
+				return ResourceManager::Instance().SCREEN_TEXTURE();
+			else {
+				PipelineItem* idata = (PipelineItem*)data;
+				if (idata->Type == PipelineItemType::CanvasMaterial)
+				{
+					pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+					const auto& unifs = odata->GetUniforms();
+					for (const auto& entry : unifs)
+						if (strcmp(entry.first.c_str(), variableName) == 0)
+							return entry.second.Value[0].uint;
+				}
+			}
+		}
+		return 0;
+	}
+	void GodotShaders::PipelineItem_DebugGetTextureSize(const char* type, void* data, int loc, const char* variableName, int& x, int& y, int& z)
+	{
+		if (variableName != nullptr) {
+			if (strcmp(variableName, "TEXTURE") == 0) {
+				if (m_dbgTexture.empty()) {
+					x = 128;
+					y = 128;
+				}
+				else
+					GetTextureSize(ObjectManager, m_dbgTexture.c_str(), x, y);
+				z = 1;
+			}
+			else if (strcmp(variableName, "SCREEN_TEXTURE") == 0) {
+				x = m_rtSize.x;
+				y = m_rtSize.y;
+				z = 1;
+			}
+			else {
+				GLuint tex = 0;
+				PipelineItem* idata = (PipelineItem*)data;
+				if (idata->Type == PipelineItemType::CanvasMaterial)
+				{
+					pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)data;
+					const auto& unifs = odata->GetUniforms();
+					for (const auto& entry : unifs)
+						if (strcmp(entry.first.c_str(), variableName) == 0) {
+							tex = entry.second.Value[0].uint;
+							break;
+						}
+				}
+
+				int ocnt = GetObjectCount(ObjectManager);
+				for (int i = 0; i < ocnt; i++) {
+					const char* oname = GetObjectName(ObjectManager, i);
+					if (IsTexture(ObjectManager, oname)) {
+						if (tex == GetFlippedTexture(ObjectManager, oname)) {
+							GetTextureSize(ObjectManager, oname, x, y);
+							z = 1;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
 
 	// code editor
 	void GodotShaders::m_buildLangDefinition()
@@ -1010,7 +1375,7 @@ namespace gd
 		m_langDefIdentifiers.push_back(std::make_pair("EndPrimitive", "Completes the current output primitive and starts a new one."));
 		m_langDefIdentifiers.push_back(std::make_pair("barrier", "For any given static instance of barrier(), all tessellation control shader invocations for a single input patch must enter it before any will be allowed to continue beyond it."));
 	}
-	void GodotShaders::SaveCodeEditorItem(const char* src, int srcLen, int sid)
+	void GodotShaders::CodeEditor_SaveItem(const char* src, int srcLen, int sid)
 	{
 		for (int i = 0; i < m_editorID.size(); i++) {
 			if (m_editorID[i] == sid) {
@@ -1023,7 +1388,7 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::CloseCodeEditorItem(int sid)
+	void GodotShaders::CodeEditor_CloseItem(int sid)
 	{
 		for (int i = 0; i < m_editorID.size(); i++)
 			if (m_editorID[i] == sid) {
@@ -1032,54 +1397,53 @@ namespace gd
 				break;
 			}
 	}
-	int GodotShaders::GetLanguageDefinitionKeywordCount(int sid)
+	int GodotShaders::LanguageDefinition_GetKeywordCount(int sid)
 	{
 		return m_langDefKeywords.size();
 	}
-	const char** GodotShaders::GetLanguageDefinitionKeywords(int sid)
+	const char** GodotShaders::LanguageDefinition_GetKeywords(int sid)
 	{
 		return m_langDefKeywords.data();
 	}
-	int GodotShaders::GetLanguageDefinitionTokenRegexCount(int sid)
+	int GodotShaders::LanguageDefinition_GetTokenRegexCount(int sid)
 	{
 		return m_langDefRegex.size();
 	}
-	const char* GodotShaders::GetLanguageDefinitionTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid)
+	const char* GodotShaders::LanguageDefinition_GetTokenRegex(int index, ed::plugin::TextEditorPaletteIndex& palIndex, int sid)
 	{
 		palIndex = m_langDefRegex[index].second;
 		return m_langDefRegex[index].first;
 	}
-	int GodotShaders::GetLanguageDefinitionIdentifierCount(int sid)
+	int GodotShaders::LanguageDefinition_GetIdentifierCount(int sid)
 	{
 		return m_langDefIdentifiers.size();
 	}
-	const char* GodotShaders::GetLanguageDefinitionIdentifier(int index, int sid)
+	const char* GodotShaders::LanguageDefinition_GetIdentifier(int index, int sid)
 	{
 		return m_langDefIdentifiers[index].first;
 	}
-	const char* GodotShaders::GetLanguageDefinitionIdentifierDesc(int index, int sid)
+	const char* GodotShaders::LanguageDefinition_GetIdentifierDesc(int index, int sid)
 	{
 		return m_langDefIdentifiers[index].second;
 	}
-	const char* GodotShaders::GetLanguageDefinitionCommentStart(int sid)
+	const char* GodotShaders::LanguageDefinition_GetCommentStart(int sid)
 	{
 		return "/*";
 	}
-	const char* GodotShaders::GetLanguageDefinitionCommentEnd(int sid)
+	const char* GodotShaders::LanguageDefinition_GetCommentEnd(int sid)
 	{
 		return "*/";
 	}
-	const char* GodotShaders::GetLanguageDefinitionLineComment(int sid)
+	const char* GodotShaders::LanguageDefinition_GetLineComment(int sid)
 	{
 		return "//";
 	}
-	bool GodotShaders::IsLanguageDefinitionCaseSensitive(int sid) { return true; }
-	bool GodotShaders::GetLanguageDefinitionAutoIndent(int sid) { return true; }
-	const char* GodotShaders::GetLanguageDefinitionName(int sid) { return "Godot"; }
-	const char* GodotShaders::GetLanguageAbbreviation(int id) { return "CM"; } // CM as in CanvasMaterial
+	bool GodotShaders::LanguageDefinition_IsCaseSensitive(int sid) { return true; }
+	bool GodotShaders::LanguageDefinition_GetAutoIndent(int sid) { return true; }
+	const char* GodotShaders::LanguageDefinition_GetName(int sid) { return "Godot"; }
+	const char* GodotShaders::LanguageDefinition_GetNameAbbreviation(int id) { return "CM"; } // CM as in CanvasMaterial
 
 	// misc
-	bool GodotShaders::HandleDropFile(const char* filename) { return false; }
 	void GodotShaders::HandleRecompile(const char* itemName)
 	{
 		for (auto& item : m_items)
@@ -1104,19 +1468,41 @@ namespace gd
 			}
 		}
 	}
-	int GodotShaders::GetShaderFilePathCount()
+	void GodotShaders::HandleApplicationEvent(ed::plugin::ApplicationEvent event, void* data1, void* data2)
+	{
+		if (event == ed::plugin::ApplicationEvent::DebuggerStarted) {
+			m_dbgEditor = nullptr;
+			for (auto& item : m_items)
+			{
+				if (item->Type == PipelineItemType::CanvasMaterial &&
+					strcmp(item->Name, (char*)data1) == 0)
+				{
+					m_dbgEditor = data2;
+					DebuggerJump(Debugger, data2, 650001);
+					DebuggerStep(Debugger, data2);
+					break;
+				}
+			}
+		} else if (event == ed::plugin::ApplicationEvent::DebuggerStepped) {
+			if (m_dbgEditor) {
+				if (DebuggerGetCurrentLine(Debugger) > 700000)
+					DebuggerContinue(Debugger, m_dbgEditor);
+			}
+		}
+	}
+	int GodotShaders::ShaderFilePath_GetCount()
 	{
 		return m_items.size();
 	}
-	const char* GodotShaders::GetShaderFilePath(int index)
+	const char* GodotShaders::ShaderFilePath_Get(int index)
 	{
 		return ((pipe::CanvasMaterial*)m_items[index])->ShaderPath;
 	}
-	bool GodotShaders::HasShaderFilePathChanged()
+	bool GodotShaders::ShaderFilePath_HasChanged()
 	{
 		return ShaderPathsUpdated;
 	}
-	void GodotShaders::UpdateShaderFilePath()
+	void GodotShaders::ShaderFilePath_Update()
 	{
 		ShaderPathsUpdated = false;
 	}

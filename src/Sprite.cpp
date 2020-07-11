@@ -175,12 +175,12 @@ namespace gd
 
 		void Sprite::m_buildVBO()
 		{
-			m_verts[0] = { {-0.5f, -0.5f},		{0.0f, 0.0f},	m_color };
-			m_verts[1] = { {0.5f, -0.5f},		{1.0f, 0.0f},	m_color };
-			m_verts[2] = { {0.5f, 0.5f},		{1.0f, 1.0f},	m_color };
-			m_verts[3] = { {-0.5f, -0.5f},		{0.0f, 0.0f},	m_color };
-			m_verts[4] = { {0.5f, 0.5f},		{1.0f, 1.0f},	m_color };
-			m_verts[5] = { {-0.5f, 0.5f},		{0.0f, 1.0f},	m_color };
+			m_verts[0] = { {-0.5f, -0.5f, 0.0f},		{0.0f, 0.0f},	m_color };
+			m_verts[1] = { {0.5f, -0.5f, 0.0f},		{1.0f, 0.0f},	m_color };
+			m_verts[2] = { {0.5f, 0.5f, 0.0f},		{1.0f, 1.0f},	m_color };
+			m_verts[3] = { {-0.5f, -0.5f, 0.0f},		{0.0f, 0.0f},	m_color };
+			m_verts[4] = { {0.5f, 0.5f, 0.0f},		{1.0f, 1.0f},	m_color };
+			m_verts[5] = { {-0.5f, 0.5f, 0.0f},		{0.0f, 1.0f},	m_color };
 
 			for (int i = 0; i < 6; i++) {
 				m_verts[i].Position.x *= m_size.x;
@@ -208,15 +208,15 @@ namespace gd
 			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(CanvasVertex), m_verts, GL_STATIC_DRAW);
 
 			// position
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)0);
 			glEnableVertexAttribArray(0);
 
-			// color
-			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(4 * sizeof(GLfloat)));
+			// uv
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(3 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(1);
 
-			// uv
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(2 * sizeof(GLfloat)));
+			// color
+			glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(CanvasVertex), (void*)(5 * sizeof(GLfloat)));
 			glEnableVertexAttribArray(2);
 
 			glBindVertexArray(0);

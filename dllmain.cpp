@@ -15,15 +15,14 @@
 #endif
 
 extern "C" {
-	FEXPORT gd::GodotShaders* CreatePlugin(ImGuiContext* ctx) {
-		ImGui::SetCurrentContext(ctx);
+	FEXPORT gd::GodotShaders* CreatePlugin() {
 		return new gd::GodotShaders();
 	}
 	FEXPORT void DestroyPlugin(gd::GodotShaders* ptr) {
 		delete ptr;
 	}
 	FEXPORT int GetPluginAPIVersion() {
-		return 2;
+		return 1;
 	}
 	FEXPORT int GetPluginVersion() {
 		return 1;

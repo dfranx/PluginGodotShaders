@@ -32,13 +32,9 @@ make
 3. Press Configure and then Generate if no errors occured
 4. Open the .sln and build the project!
 
-## How to use
-This plugin requires SHADERed v1.3 minimum.
+## How to install
+This plugin's minimum requirements: SHADERed v1.3.5
 
 Copy the .dll/.so file to plugins/GodotShaders in your SHADERed installation directory
 
-## TODO
-- light shaders
-- shader\_type spatial
-- particle shaders
-- more nodes
+## Tutorial

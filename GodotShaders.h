@@ -170,8 +170,8 @@ namespace gd
 		virtual bool ShaderEditor_HasStats(int langID, int editorID) { return 0; }
 
 		// code editor
-		virtual void CodeEditor_SaveItem(const char* src, int srcLen, int id);
-		virtual void CodeEditor_CloseItem(int id);
+		virtual void CodeEditor_SaveItem(const char* src, int srcLen, const char* path);
+		virtual void CodeEditor_CloseItem(const char* path);
 		virtual bool LanguageDefinition_Exists(int id) { return true; }
 		virtual int LanguageDefinition_GetKeywordCount(int id);
 		virtual const char** LanguageDefinition_GetKeywords(int id);
@@ -234,8 +234,6 @@ namespace gd
 		std::vector<std::pair<const char*, const char*>> m_langDefIdentifiers;
 		void m_buildLangDefinition();
 		std::vector<std::string> m_editorOpened;
-		std::vector<int> m_editorID;
-		int m_editorCurrentID;
 
 		std::unordered_map<GLuint, bool> m_isRTCleared;
 

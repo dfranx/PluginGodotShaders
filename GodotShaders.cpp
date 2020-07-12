@@ -191,7 +191,6 @@ namespace gd
 		m_lastSize = glm::vec2(1, 1);
 		ShaderPathsUpdated = false;
 		m_varManagerOpened = false;
-		m_editorCurrentID = 0;
 		m_lastErrorCheck = 0.0f;
 		m_buildLangDefinition();
 
@@ -442,10 +441,8 @@ namespace gd
 		else if (strcmp(name, "editcode") == 0) {
 			if (ImGui::Selectable("Shader")) {
 				pipe::CanvasMaterial* odata = (pipe::CanvasMaterial*)owner;
-				OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, odata->Name), odata->ShaderPath, m_editorCurrentID);
-				m_editorID.push_back(m_editorCurrentID);
+				OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, odata->Name), odata->ShaderPath, (int)ed::plugin::ShaderStage::Vertex);
 				m_editorOpened.push_back(odata->ShaderPath);
-				m_editorCurrentID++;
 			}
 		}
 	}
@@ -473,10 +470,8 @@ namespace gd
 	{
 		if (strcmp(type, ITEM_NAME_CANVAS_MATERIAL) == 0) {
 			pipe::CanvasMaterial* mat = (pipe::CanvasMaterial*)data;
-			OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, mat->Name), mat->ShaderPath, m_editorCurrentID);
-			m_editorID.push_back(m_editorCurrentID);
+			OpenInCodeEditor(UI, GetPipelineItem(PipelineManager, mat->Name), mat->ShaderPath, (int)ed::plugin::ShaderStage::Vertex);
 			m_editorOpened.push_back(mat->ShaderPath);
-			m_editorCurrentID++;
 
 			printf("[GSHADERS] Opened %s's shader.\n", mat->Name);
 		}
@@ -1375,10 +1370,10 @@ namespace gd
 		m_langDefIdentifiers.push_back(std::make_pair("EndPrimitive", "Completes the current output primitive and starts a new one."));
 		m_langDefIdentifiers.push_back(std::make_pair("barrier", "For any given static instance of barrier(), all tessellation control shader invocations for a single input patch must enter it before any will be allowed to continue beyond it."));
 	}
-	void GodotShaders::CodeEditor_SaveItem(const char* src, int srcLen, int sid)
+	void GodotShaders::CodeEditor_SaveItem(const char* src, int srcLen, const char* sid)
 	{
-		for (int i = 0; i < m_editorID.size(); i++) {
-			if (m_editorID[i] == sid) {
+		for (int i = 0; i < m_editorOpened.size(); i++) {
+			if (m_editorOpened[i] == sid) {
 				char outPath[MAX_PATH_LENGTH] = { 0 };
 				GetProjectPath(Project, m_editorOpened[i].c_str(), outPath);
 				std::ofstream out(outPath);
@@ -1388,11 +1383,10 @@ namespace gd
 			}
 		}
 	}
-	void GodotShaders::CodeEditor_CloseItem(int sid)
+	void GodotShaders::CodeEditor_CloseItem(const char* sid)
 	{
-		for (int i = 0; i < m_editorID.size(); i++)
-			if (m_editorID[i] == sid) {
-				m_editorID.erase(m_editorID.begin() + i);
+		for (int i = 0; i < m_editorOpened.size(); i++)
+			if (m_editorOpened[i] == sid) {
 				m_editorOpened.erase(m_editorOpened.begin() + i);
 				break;
 			}

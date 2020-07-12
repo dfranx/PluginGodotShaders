@@ -22,7 +22,7 @@ extern "C" {
 		delete ptr;
 	}
 	FEXPORT int GetPluginAPIVersion() {
-		return 1;
+		return 3;
 	}
 	FEXPORT int GetPluginVersion() {
 		return 1;

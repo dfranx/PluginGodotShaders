@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<project version="2">
+	<pipeline>
+		<pass name="CanvasMaterial" type="plugin" plugin="GodotShaders" itemtype="GCanvasMaterial">
+			<items>
+				<item name="Sprite" type="plugin" plugin="GodotShaders" itemtype="GSprite">
+					<data>
+						<texture />
+						<width>128</width>
+						<height>128</height>
+						<x>100</x>
+						<y>100</y>
+						<rotation>0</rotation>
+						<fliph>false</fliph>
+						<flipv>false</flipv>
+						<visible>true</visible>
+						<color_r>1</color_r>
+						<color_g>1</color_g>
+						<color_b>1</color_b>
+						<color_a>1</color_a>
+					</data>
+				</item>
+			</items>
+			<data>
+				<path>shaders\CanvasMaterial.shader</path>
+				<uniforms>
+					<uniform name="uMultiplier" type="float">
+						<value>50</value>
+					</uniform>
+				</uniforms>
+			</data>
+		</pass>
+	</pipeline>
+	<objects />
+	<cameras />
+	<settings>
+		<entry type="file" name="CanvasMaterial" shader="vs" />
+		<entry type="camera" fp="false">
+			<distance>8</distance>
+			<pitch>41</pitch>
+			<yaw>44</yaw>
+			<roll>360</roll>
+		</entry>
+		<entry type="clearcolor" r="0" g="0" b="0" a="0" />
+		<entry type="usealpha" val="false" />
+	</settings>
+	<plugindata />
+	<plugins>
+		<entry name="GodotShaders" ver="1" required="true" />
+	</plugins>
+</project>

@@ -113,7 +113,7 @@ namespace ed {
 			PipelineItemAdded,	  /* char* itemName, nullptr */
 			PipelineItemDeleted,  /* char* itemName, nullptr */
 			PipelineItemRenamed,
-			DebuggerStarted,	  /* char* itemName, ed::plugin::ShaderStage */
+			DebuggerStarted,	  /* char* itemName, void* editor */
 			DebuggerStepped,	  /* int line, nullptr */
 			DebuggerStopped		  /* nullptr, nullptr */
 			/* ETC... */

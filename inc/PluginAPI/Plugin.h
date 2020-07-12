@@ -1,5 +1,5 @@
 #pragma once
-#include "PluginData.h"
+#include <PluginAPI/PluginData.h>
 #include <stddef.h>
 
 namespace ed {
@@ -37,7 +37,7 @@ namespace ed {
 		typedef void* (*GetPipelineItemFn)(void* pipeline, const char* name);
 		typedef int (*GetPipelineItemCountFn)(void* pipeline);
 		typedef void* (*GetPipelineItemByIndexFn)(void* pipeline, int index);
-		typedef plugin::PipelineItemType(*GetPipelineItemTypeFn)(void* item);
+		typedef plugin::PipelineItemType (*GetPipelineItemTypeFn)(void* item);
 		typedef const char* (*GetPipelineItemNameFn)(void* item);
 		typedef void* (*GetPipelineItemPluginOwnerFn)(void* item);
 		typedef int (*GetPipelineItemChildrenCountFn)(void* item);
@@ -52,7 +52,7 @@ namespace ed {
 		typedef int (*GetPipelineItemVariableCountFn)(void* item);
 		typedef const char* (*GetPipelineItemVariableNameFn)(void* item, int index);
 		typedef char* (*GetPipelineItemVariableValueFn)(void* item, int index);
-		typedef plugin::VariableType(*GetPipelineItemVariableTypeFn)(void* item, int index);
+		typedef plugin::VariableType (*GetPipelineItemVariableTypeFn)(void* item, int index);
 		typedef bool (*AddPipelineItemVariableFn)(void* item, const char* name, plugin::VariableType type);
 
 		typedef void (*BindShaderPassVariablesFn)(void* shaderpass, void* item);
@@ -64,6 +64,7 @@ namespace ed {
 		typedef void (*GetMousePositionFn)(float& x, float& y);
 		typedef int (*GetFrameIndexFn)();
 		typedef float (*GetTimeFn)();
+		typedef void (*SetTimeFn)(float time);
 		typedef void (*SetGeometryTransformFn)(void* item, float scale[3], float rota[3], float pos[3]);
 		typedef void (*SetMousePositionFn)(float x, float y);
 		typedef void (*SetKeysWASDFn)(bool w, bool a, bool s, bool d);
@@ -95,7 +96,7 @@ namespace ed {
 		typedef int (*GetIncludePathCountFn)();
 		typedef const char* (*GetIncludePathFn)(void* project, int index);
 		typedef const char* (*GetMessagesCurrentItemFn)(void* messages);
-
+	
 		typedef void (*OnEditorContentChangeFn)(void* UI, void* plugin, int langID, int editorID);
 		typedef unsigned int* (*GetPipelineItemSPIRVFn)(void* item, plugin::ShaderStage stage, int* dataLen);
 		typedef void (*RegisterShortcutFn)(void* plugin, const char* name);
@@ -127,13 +128,15 @@ namespace ed {
 		typedef bool (*DebuggerCheckBreakpointFn)(void* Debugger, void* TextEditor, int line);
 		typedef bool (*DebuggerIsDebuggingFn)(void* Debugger, void* TextEditor);
 		typedef int (*DebuggerGetCurrentLineFn)(void* Debugger);
+
+		typedef float (*ScaleSizeFn)(float size);
 	}
 
 	// CreatePlugin(), DestroyPlugin(ptr), GetPluginAPIVersion(), GetPluginVersion(), GetPluginName()
 	class IPlugin1 {
 	public:
 		virtual int GetVersion() { return 1; }
-
+		
 		virtual bool Init(bool isWeb, int sedVersion) = 0;
 		virtual void InitUI(void* ctx) = 0;
 		virtual void OnEvent(void* e) = 0; // e is &SDL_Event
@@ -212,9 +215,9 @@ namespace ed {
 		virtual void* PipelineItem_CopyData(const char* type, void* data) = 0;
 		virtual void PipelineItem_Execute(void* Owner, plugin::PipelineItemType OwnerType, const char* type, void* data) = 0;
 		virtual void PipelineItem_Execute(const char* type, void* data, void* children, int count) = 0;
-		virtual void PipelineItem_GetWorldMatrix(const char* type, void* data, float(&pMat)[16]) = 0; //must be implemented if item is pickable
+		virtual void PipelineItem_GetWorldMatrix(const char* type, void* data, float (&pMat)[16]) = 0; //must be implemented if item is pickable
 		virtual bool PipelineItem_Intersect(const char* type, void* data, const float* rayOrigin, const float* rayDir, float& hitDist) = 0;
-		virtual void PipelineItem_GetBoundingBox(const char* type, void* data, float(&minPos)[3], float(&maxPos)[3]) = 0;
+		virtual void PipelineItem_GetBoundingBox(const char* type, void* data, float (&minPos)[3], float (&maxPos)[3]) = 0;
 		virtual bool PipelineItem_HasContext(const char* type, void* data) = 0;
 		virtual void PipelineItem_ShowContext(const char* type, void* data) = 0;
 		virtual const char* PipelineItem_Export(const char* type, void* data) = 0;
@@ -283,8 +286,8 @@ namespace ed {
 		virtual bool ShaderEditor_HasStats(int langID, int editorID) = 0;
 
 		// code editor
-		virtual void CodeEditor_SaveItem(const char* src, int srcLen, int id) = 0;
-		virtual void CodeEditor_CloseItem(int id) = 0;
+		virtual void CodeEditor_SaveItem(const char* src, int srcLen, const char* path) = 0;
+		virtual void CodeEditor_CloseItem(const char* path) = 0;
 		virtual bool LanguageDefinition_Exists(int id) = 0;
 		virtual int LanguageDefinition_GetKeywordCount(int id) = 0;
 		virtual const char** LanguageDefinition_GetKeywords(int id) = 0;
@@ -321,9 +324,9 @@ namespace ed {
 		virtual void HandlePluginMessage(const char* sender, char* msg, int msgLen) = 0;
 		virtual void HandleApplicationEvent(plugin::ApplicationEvent event, void* data1, void* data2) = 0;
 		virtual void HandleNotification(int id) = 0;
-
+		
 		// host functions
-		void* Renderer, * Messages, * Project, * UI, * ObjectManager, * PipelineManager, * Plugins, * Debugger;
+		void *Renderer, *Messages, *Project, *UI, *ObjectManager, *PipelineManager, *Plugins, *Debugger;
 		pluginfn::AddObjectFn AddObject;
 		pluginfn::AddCustomPipelineItemFn AddCustomPipelineItem;
 		pluginfn::AddMessageFn AddMessage;
@@ -359,6 +362,7 @@ namespace ed {
 		pluginfn::GetMousePositionFn GetMousePosition;
 		pluginfn::GetFrameIndexFn GetFrameIndex;
 		pluginfn::GetTimeFn GetTime;
+		pluginfn::SetTimeFn SetTime;
 		pluginfn::SetGeometryTransformFn SetGeometryTransform;
 		pluginfn::SetMousePositionFn SetMousePosition;
 		pluginfn::SetKeysWASDFn SetKeysWASD;
@@ -428,5 +432,6 @@ namespace ed {
 		pluginfn::IsRenderTextureFn IsRenderTexture;
 		pluginfn::GetRenderTextureSizeFn GetRenderTextureSize;
 		pluginfn::GetDepthTextureFn GetDepthTexture;
+		pluginfn::ScaleSizeFn ScaleSize;
 	};
 }

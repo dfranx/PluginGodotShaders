@@ -17,7 +17,7 @@
 
 namespace gd
 {
-	class GodotShaders : public ed::IPlugin1
+	class GodotShaders : public ed::IPlugin2
 	{
 	public:
 		virtual bool Init(bool isWeb, int sedVersion);
@@ -209,14 +209,30 @@ namespace gd
 		virtual void HandleApplicationEvent(ed::plugin::ApplicationEvent event, void* data1, void* data2);
 		virtual void HandleNotification(int id) { }
 
-		inline unsigned int GetColorBuffer() { return GetWindowColorTexture(Renderer); }
+		// IPlugin2
+		virtual bool PipelineItem_SupportsImmediateMode(const char* type, void* data, ed::plugin::ShaderStage stage) { return true; }
+		virtual bool PipelineItem_HasCustomImmediateModeCompiler(const char* type, void* data, ed::plugin::ShaderStage stage) { return false; }
+		virtual bool PipelineItem_ImmediateModeCompile(const char* type, void* data, ed::plugin::ShaderStage stage, const char* expression) { return false; }
 
+		// Immediate mode
+		virtual unsigned int ImmediateMode_GetSPIRVSize() { return 0; }
+		virtual unsigned int* ImmediateMode_GetSPIRV() { return 0; }
+		virtual unsigned int ImmediateMode_GetVariableCount() { return 0; }
+		virtual const char* ImmediateMode_GetVariableName(unsigned int index) { return 0; }
+		virtual int ImmediateMode_GetResultID() { return 0; }
+
+		inline int GetHostVersion() { return m_hostVersion; }
+
+		inline unsigned int GetColorBuffer() { return GetWindowColorTexture(Renderer); }
 		bool ShaderPathsUpdated;
+
 	private:
 		void m_addCanvasMaterial();
 		void m_addSprite(pipe::CanvasMaterial* owner, const std::string& tex);
 
 		void m_bindFBO(pipe::CanvasMaterial* canvas);
+
+		int m_hostVersion;
 
 		float m_lastErrorCheck;
 

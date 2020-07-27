@@ -196,6 +196,11 @@ namespace gd
 
 		glslang::InitializeProcess();
 
+		if (sedVersion == 1003005)
+			m_hostVersion = 1;
+		else
+			m_hostVersion = GetHostIPluginMaxVersion();
+
 		return true;
 	}
 	void GodotShaders::InitUI(void* ctx)

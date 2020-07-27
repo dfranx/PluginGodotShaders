@@ -140,28 +140,8 @@ namespace gd
 			ImGui::PopItemFlag();
 			ImGui::PopItemWidth();
 			ImGui::SameLine();
-			if (ImGui::Button("...##pui_sbtn", ImVec2(-1, 0))) {
-				char filePtr[512] = { 0 };
-				bool success = Owner->GetOpenFileDialog(filePtr, nullptr);
-				std::string file(filePtr);
-				if (success) {
-					char tempFile[MAX_PATH_LENGTH] = { 0 };
-					Owner->GetRelativePath(Owner->Project, file.c_str(), tempFile);
-					file = std::string(tempFile);
-
-					strcpy(ShaderPath, file.c_str());
-
-					Owner->ModifyProject(Owner->Project);
-
-					if (Owner->FileExists(Owner->Project, file.c_str())) {
-						Owner->ClearMessageGroup(Owner->Messages, Name);
-						Compile();
-					}
-					else
-						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist", -1);
-					((gd::GodotShaders*)Owner)->ShaderPathsUpdated = true;
-				}
-			}
+			if (ImGui::Button("...##pui_sbtn", ImVec2(-1, 0)) && ((gd::GodotShaders*)Owner)->GetHostVersion() >= 2) 
+				Owner->ImGuiFileDialogOpen("SelectGodotShaderDlg", "Select a shader", "Godot shaders (*.shader){.shader},.*");
 			ImGui::NextColumn();
 
 
@@ -194,8 +174,32 @@ namespace gd
 			ImGui::PopItemWidth();
 			ImGui::NextColumn();
 
-
 			ImGui::Columns(1);
+
+
+			// file dialogs
+			if (((gd::GodotShaders*)Owner)->GetHostVersion() >= 2 && Owner->ImGuiFileDialogIsDone("SelectGodotShaderDlg")) {
+				if (Owner->ImGuiFileDialogGetResult()) {
+					char filePtr[512] = { 0 };
+					Owner->ImGuiFileDialogGetPath(filePtr);
+
+					char tempFile[MAX_PATH_LENGTH] = { 0 };
+					Owner->GetRelativePath(Owner->Project, filePtr, tempFile);
+
+					strcpy(ShaderPath, tempFile);
+					Owner->ModifyProject(Owner->Project);
+
+					if (Owner->FileExists(Owner->Project, tempFile)) {
+						Owner->ClearMessageGroup(Owner->Messages, Name);
+						Compile();
+					}
+					else
+						Owner->AddMessage(Owner->Messages, ed::plugin::MessageType::Error, Name, "Shader file doesn't exist", -1);
+					((gd::GodotShaders*)Owner)->ShaderPathsUpdated = true;
+				}
+
+				Owner->ImGuiFileDialogClose("SelectGodotShaderDlg");
+			}
 		}
 		void CanvasMaterial::ShowVariableEditor()
 		{

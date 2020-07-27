@@ -20,7 +20,7 @@ namespace gd
 		// local copy of the data stored in SHADERed:
 		char Name[PIPELINE_ITEM_NAME_LENGTH];
 		std::vector<PipelineItem*> Items;
-		ed::IPlugin1* Owner;
+		ed::IPlugin2* Owner;
 		PipelineItemType Type;
 	};
 }

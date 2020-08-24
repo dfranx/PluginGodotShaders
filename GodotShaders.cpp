@@ -290,7 +290,10 @@ namespace gd
 	{
 		ResourceManager::Instance().CopiedScreenTexture = false;
 
-		GetViewportSize(m_rtSize.x, m_rtSize.y);
+		int w = 1, h = 1;
+		GetLastRenderSize(Renderer, w, h);
+		m_rtSize.x = w;
+		m_rtSize.y = h;
 		if (m_lastSize != m_rtSize) {
 			m_lastSize = m_rtSize;
 

@@ -22,10 +22,10 @@ extern "C" {
 		delete ptr;
 	}
 	FEXPORT int GetPluginAPIVersion() {
-		return 4;
+		return 3;
 	}
 	FEXPORT int GetPluginVersion() {
-		return 1;
+		return 2;
 	}
 	FEXPORT const char* GetPluginName() {
 		return "GodotShaders";
